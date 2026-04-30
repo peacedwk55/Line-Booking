@@ -17,7 +17,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | .NET 8 Web API (C#) |
+| Backend | .NET 10 Web API (C#) |
 | Frontend | Next.js 14 (App Router, TypeScript) |
 | Database | PostgreSQL |
 | LINE | Messaging API + LIFF 2.x |
