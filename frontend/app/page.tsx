@@ -25,9 +25,11 @@ export default function BookingPage() {
   const [bookingId,       setBookingId] = useState<string>('')
   const [apiError,        setApiError]  = useState<string>('')
 
-  // Generate next 14 days (excluding Sunday = 0)
-  const availableDates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i + 1))
+  // Generate next 60 days (excluding Sunday = 0)
+  const availableDates = Array.from({ length: 60 }, (_, i) => addDays(new Date(), i + 1))
     .filter(d => d.getDay() !== 0)
+  const minDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
+  const maxDate = format(addDays(new Date(), 60), 'yyyy-MM-dd')
 
   useEffect(() => {
     if (ready) getServices().then(setServices).catch(e => setApiError(e?.message ?? 'API error'))
@@ -153,37 +155,24 @@ export default function BookingPage() {
               ← กลับ
             </button>
             <h2 className="font-bold text-gray-800 text-lg mb-1">เลือกวันที่</h2>
-            <p className="text-sm text-gray-500 mb-4">{selectedService?.name}</p>
-            {/* Group dates by month */}
-            {Array.from(new Set(availableDates.map(d => format(d, 'yyyy-MM')))).map(ym => {
-              const datesInMonth = availableDates.filter(d => format(d, 'yyyy-MM') === ym)
-              const monthLabel = format(datesInMonth[0], 'MMMM yyyy', { locale: th })
-              return (
-                <div key={ym} className="mb-4">
-                  <p className="text-sm font-semibold text-amber-700 mb-2">{monthLabel}</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {datesInMonth.map(d => {
-                      const dateStr = format(d, 'yyyy-MM-dd')
-                      const isSelected = selectedDate === dateStr
-                      return (
-                        <button
-                          key={dateStr}
-                          onClick={() => { setDate(dateStr); setStep('time') }}
-                          className={`rounded-xl p-2.5 text-center transition-all ${
-                            isSelected
-                              ? 'bg-amber-500 text-white shadow-md'
-                              : 'bg-white border border-amber-100 hover:border-amber-400 text-gray-700'
-                          }`}
-                        >
-                          <p className="text-xs opacity-70">{format(d, 'EEE', { locale: th })}</p>
-                          <p className="font-bold text-base">{format(d, 'd')}</p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+            <p className="text-sm text-gray-500 mb-3">{selectedService?.name}</p>
+            <p className="text-xs text-gray-400 mb-3">เปิดให้จองวันจันทร์ – เสาร์</p>
+            <input
+              type="date"
+              min={minDate}
+              max={maxDate}
+              value={selectedDate}
+              onChange={e => {
+                const d = new Date(e.target.value)
+                if (d.getDay() === 0) return  // block Sunday
+                setDate(e.target.value)
+                setStep('time')
+              }}
+              className="w-full border-2 border-amber-200 rounded-2xl p-4 text-lg text-gray-700 focus:outline-none focus:border-amber-400 bg-white"
+            />
+            {selectedDate && new Date(selectedDate).getDay() === 0 && (
+              <p className="text-red-500 text-sm mt-2">วันอาทิตย์ไม่เปิดให้บริการ กรุณาเลือกวันอื่น</p>
+            )}
           </div>
         )}
 

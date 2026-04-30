@@ -290,7 +290,7 @@
       })
       toast('อัพเดตสถานะเสร็จสิ้น')
       loadDashboard()
-    } catch { toast('เกิดข้อผิดพลาด', false) }
+    } catch(e) { toast('Error: ' + (e?.message ?? String(e)), false) }
     finally { loading(false) }
   }
 
