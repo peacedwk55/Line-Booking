@@ -31,6 +31,7 @@ builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyOrigin()
      .AllowAnyHeader()
      .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+     .SetPreflightMaxAge(TimeSpan.Zero)
 ));
 
 // ── Quartz (reminder job at 18:00 Bangkok = 11:00 UTC) ───────────
