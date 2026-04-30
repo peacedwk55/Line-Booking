@@ -30,7 +30,7 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyOrigin()
      .AllowAnyHeader()
-     .AllowAnyMethod()
+     .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
 ));
 
 // ── Quartz (reminder job at 18:00 Bangkok = 11:00 UTC) ───────────
