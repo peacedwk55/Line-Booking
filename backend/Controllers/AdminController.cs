@@ -55,8 +55,9 @@ public class AdminController(AppDbContext db, BookingService svc) : ControllerBa
         return Ok(bookings);
     }
 
-    // PATCH /api/diamond-massage/admin/bookings/{id}
+    // PATCH or POST /api/diamond-massage/admin/bookings/{id}
     [HttpPatch("bookings/{id}")]
+    [HttpPost("bookings/{id}")]
     public async Task<IActionResult> Update(
         [FromRoute] string          tenantSlug,
         [FromRoute] Guid            id,
