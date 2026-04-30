@@ -42,6 +42,16 @@ public class BookingController(AppDbContext db, BookingService svc) : Controller
         var tenant = await ResolveTenant(tenantSlug);
         if (tenant == null) return NotFound("Tenant not found");
 
+        // Update display name / picture if provided
+        var user = await db.Users.FirstOrDefaultAsync(u =>
+            u.TenantId == tenant.Id && u.LineUserId == dto.LineUserId);
+        if (user != null)
+        {
+            if (dto.DisplayName != null) user.DisplayName = dto.DisplayName;
+            if (dto.PictureUrl  != null) user.PictureUrl  = dto.PictureUrl;
+            await db.SaveChangesAsync();
+        }
+
         var req = new CreateBookingRequest(
             dto.LineUserId,
             dto.ServiceId,
@@ -130,10 +140,12 @@ public class BookingController(AppDbContext db, BookingService svc) : Controller
 }
 
 public record CreateBookingDto(
-    string LineUserId,
-    Guid   ServiceId,
-    string Date,
-    string StartTime,
-    string EndTime,
+    string  LineUserId,
+    string? DisplayName,
+    string? PictureUrl,
+    Guid    ServiceId,
+    string  Date,
+    string  StartTime,
+    string  EndTime,
     string? Note
 );

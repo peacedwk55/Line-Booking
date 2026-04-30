@@ -47,11 +47,13 @@ export default function BookingPage() {
     setLoading(true)
     try {
       const result = await createBooking({
-        lineUserId: profile.userId,
-        serviceId:  selectedService.id,
-        date:       selectedDate,
-        startTime:  selectedSlot.start,
-        endTime:    selectedSlot.end,
+        lineUserId:  profile.userId,
+        displayName: profile.displayName,
+        pictureUrl:  profile.pictureUrl,
+        serviceId:   selectedService.id,
+        date:        selectedDate,
+        startTime:   selectedSlot.start,
+        endTime:     selectedSlot.end,
         note
       })
       setBookingId(result.bookingId)

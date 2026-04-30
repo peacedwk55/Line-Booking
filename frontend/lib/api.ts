@@ -51,12 +51,14 @@ export interface Slot {
 }
 
 export interface CreateBookingPayload {
-  lineUserId: string
-  serviceId:  string
-  date:       string
-  startTime:  string
-  endTime:    string
-  note?:      string
+  lineUserId:   string
+  displayName?: string
+  pictureUrl?:  string
+  serviceId:    string
+  date:         string
+  startTime:    string
+  endTime:      string
+  note?:        string
 }
 
 export interface Booking {
