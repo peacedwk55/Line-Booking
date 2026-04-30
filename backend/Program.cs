@@ -28,12 +28,9 @@ builder.Services.AddScoped<BookingService>();
 
 // ── CORS (allow LIFF origin) ─────────────────────────────────────
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
-    p.WithOrigins(
-        "https://liff.line.me",
-        builder.Configuration["FrontendUrl"] ?? "http://localhost:3000"
-    )
-    .AllowAnyHeader()
-    .AllowAnyMethod()
+    p.AllowAnyOrigin()
+     .AllowAnyHeader()
+     .AllowAnyMethod()
 ));
 
 // ── Quartz (reminder job at 18:00 Bangkok = 11:00 UTC) ───────────
