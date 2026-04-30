@@ -1,0 +1,151 @@
+// ================================================================
+// Controllers/AdminController.cs  —  Simple admin panel API
+// ================================================================
+using DiamondBooking.Data;
+using DiamondBooking.Models;
+using DiamondBooking.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace DiamondBooking.Controllers;
+
+[ApiController]
+[Route("api/{tenantSlug}/admin")]
+public class AdminController(AppDbContext db, BookingService svc) : ControllerBase
+{
+    // GET /api/diamond-massage/admin/bookings?date=2025-02-01&status=confirmed
+    [HttpGet("bookings")]
+    public async Task<IActionResult> GetBookings(
+        [FromRoute] string  tenantSlug,
+        [FromQuery] string? date,
+        [FromQuery] string? status)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var query = db.Bookings
+            .Include(b => b.User)
+            .Include(b => b.Service)
+            .Where(b => b.TenantId == tenant.Id);
+
+        if (DateOnly.TryParse(date, out var d))
+            query = query.Where(b => b.BookingDate == d);
+
+        if (Enum.TryParse<BookingStatus>(status, true, out var s))
+            query = query.Where(b => b.Status == s);
+
+        var bookings = await query
+            .OrderBy(b => b.BookingDate).ThenBy(b => b.StartTime)
+            .Select(b => new
+            {
+                id          = b.Id,
+                date        = b.BookingDate.ToString("yyyy-MM-dd"),
+                startTime   = b.StartTime.ToString("HH:mm"),
+                endTime     = b.EndTime.ToString("HH:mm"),
+                status      = b.Status.ToString(),
+                service     = b.Service != null ? b.Service.Name : "-",
+                userName    = b.User.DisplayName ?? b.User.LineUserId,
+                userPhone   = b.User.Phone,
+                note        = b.Note,
+                adminNote   = b.AdminNote,
+                createdAt   = b.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(bookings);
+    }
+
+    // PATCH /api/diamond-massage/admin/bookings/{id}
+    [HttpPatch("bookings/{id}")]
+    public async Task<IActionResult> Update(
+        [FromRoute] string          tenantSlug,
+        [FromRoute] Guid            id,
+        [FromBody]  UpdateBookingDto dto)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var booking = await db.Bookings
+            .FirstOrDefaultAsync(b => b.Id == id && b.TenantId == tenant.Id);
+
+        if (booking == null) return NotFound();
+
+        if (dto.Status != null && Enum.TryParse<BookingStatus>(dto.Status, true, out var newStatus))
+            booking.Status = newStatus;
+
+        if (dto.AdminNote != null)
+            booking.AdminNote = dto.AdminNote;
+
+        booking.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Updated" });
+    }
+
+    // DELETE /api/diamond-massage/admin/bookings/{id}
+    [HttpDelete("bookings/{id}")]
+    public async Task<IActionResult> Cancel(
+        [FromRoute] string  tenantSlug,
+        [FromRoute] Guid    id,
+        [FromQuery] string? reason)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var ok = await svc.CancelAsync(tenant.Id, id, reason ?? "ยกเลิกโดย Admin");
+        return ok ? Ok(new { message = "Cancelled" }) : NotFound();
+    }
+
+    // GET /api/diamond-massage/admin/users
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers([FromRoute] string tenantSlug)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var users = await db.Users
+            .Where(u => u.TenantId == tenant.Id)
+            .Select(u => new
+            {
+                u.Id,
+                u.LineUserId,
+                u.DisplayName,
+                u.Phone,
+                u.CreatedAt,
+                BookingCount = db.Bookings.Count(b => b.UserId == u.Id)
+            })
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync();
+
+        return Ok(users);
+    }
+
+    // GET /api/diamond-massage/admin/dashboard
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> Dashboard([FromRoute] string tenantSlug)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var today    = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var thisWeek = today.AddDays(-(int)today.DayOfWeek);
+
+        var stats = new
+        {
+            todayBookings = await db.Bookings.CountAsync(b =>
+                b.TenantId == tenant.Id && b.BookingDate == today && b.Status != BookingStatus.Cancelled),
+            weekBookings = await db.Bookings.CountAsync(b =>
+                b.TenantId == tenant.Id && b.BookingDate >= thisWeek && b.Status != BookingStatus.Cancelled),
+            totalUsers = await db.Users.CountAsync(u => u.TenantId == tenant.Id),
+            pendingToday = await db.Bookings.CountAsync(b =>
+                b.TenantId == tenant.Id && b.BookingDate == today && b.Status == BookingStatus.Confirmed)
+        };
+
+        return Ok(stats);
+    }
+
+    private async Task<Tenant?> ResolveTenant(string slug) =>
+        await db.Tenants.FirstOrDefaultAsync(t => t.Slug == slug && t.IsActive);
+}
+
+public record UpdateBookingDto(string? Status, string? AdminNote);

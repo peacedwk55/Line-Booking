@@ -1,0 +1,31 @@
+# ── .NET ─────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+.vs/
+*.suo
+*.log
+
+# ── Environment / Secrets ─────────────────────────────────────────
+backend/appsettings.Development.json
+backend/.env
+.env
+.env.local
+.env*.local
+
+# ── Frontend ──────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/coverage/
+
+# ── Coverage reports ─────────────────────────────────────────────
+coverage/
+TestResults/
+*.coverage
+
+# ── OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Docker (local override only) ─────────────────────────────────
+docker-compose.override.yml
