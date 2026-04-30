@@ -357,3 +357,86 @@ VALUES ('happy-spa', 'Happy Spa', 'CHANNEL_ID', 'SECRET', 'TOKEN', 'LIFF_ID');
 - Admin dashboard (`admin/index.html`) ควร password protect
 - Timezone ใช้ UTC+7 fixed — ควรใช้ `tenant.timezone` แทน
 - LINE Access Token ไม่มี auto-refresh — ควรใช้ short-lived stateless token
+
+---
+
+## 📦 Production Status (as of 2026-04-30)
+
+### URLs
+| Service | URL |
+|---------|-----|
+| Backend (Railway) | `https://line-booking-production-a46f.up.railway.app` |
+| Frontend / LIFF (Vercel) | `https://line-booking-ochre.vercel.app` |
+| Admin Dashboard | `https://line-booking-ochre.vercel.app/admin/index.html` |
+| Health Check | `https://line-booking-production-a46f.up.railway.app/health` |
+
+### Deployment
+- **Railway** — auto-deploy จาก GitHub `main` branch, Root Directory = `/backend`, port 8080
+- **Vercel** — auto-deploy จาก GitHub `main` branch, Root Directory = `/frontend`
+- **PostgreSQL** — Railway managed DB, เชื่อมต่อผ่าน TCP proxy `switchyard.proxy.rlwy.net:45064`
+
+### LINE Setup
+- LINE Login channel สำหรับ LIFF (แยกจาก Messaging API channel)
+- Webhook URL: `https://line-booking-production-a46f.up.railway.app/webhook/diamond-massage`
+- LINE credentials (channel_secret, access_token, liff_id) เก็บใน DB ตาราง `tenants`
+
+### การ Seed ข้อมูล
+- `Program.cs` auto-seed tenant + services + timeslots ตอน startup ถ้ายังไม่มีข้อมูล
+- Tenant ID fixed: `00000000-0000-0000-0000-000000000001`, slug = `diamond-massage`
+- เวลาเปิด: จันทร์–เสาร์ 10:00–20:30 (7 slots/วัน), MaxBookings = 2 ต่อ slot
+
+---
+
+## 🔧 Changes จาก MVP Template (สิ่งที่แก้ไประหว่าง deploy)
+
+### backend/Program.cs
+- เพิ่ม auto-seed tenant/services/timeslots หลัง `MigrateAsync()`
+- CORS: `WithMethods("GET","POST","PUT","PATCH","DELETE","OPTIONS")` แทน `AllowAnyMethod()`
+- CORS: เพิ่ม `SetPreflightMaxAge(TimeSpan.Zero)` ป้องกัน browser cache preflight
+
+### backend/Controllers/BookingController.cs
+- `CreateBookingDto` เพิ่ม `DisplayName` และ `PictureUrl`
+- บันทึก display name / picture จาก LIFF ลง DB ตอนสร้าง booking
+
+### backend/Controllers/AdminController.cs
+- Update endpoint รับทั้ง `[HttpPatch]` และ `[HttpPost]` เพื่อ compatibility กับ browser extensions
+
+### frontend/app/page.tsx
+- Date picker เปลี่ยนเป็น native `<input type="date">` แทน 14-day grid
+- Range: +1 ถึง +60 วัน, block Sunday
+- ส่ง `displayName` และ `pictureUrl` จาก LIFF profile ตอน createBooking
+
+### frontend/lib/api.ts
+- เพิ่ม `displayName?` และ `pictureUrl?` ใน `CreateBookingPayload`
+
+### frontend/hooks/useLiff.ts
+- เพิ่ม LIFF mock สำหรับ local dev (`NEXT_PUBLIC_LIFF_MOCK=true`)
+
+### frontend/public/admin/index.html
+- ไฟล์ใหม่ (copy จาก `frontend/admin/`) เพื่อ serve ผ่าน Vercel
+- API URL ชี้ไป Railway production
+- เปลี่ยน markComplete จาก `PATCH` เป็น `POST`
+
+---
+
+## 🛠️ Local Dev Setup
+
+```bash
+# รัน backend (Windows PowerShell — ใช้ .NET 10)
+cd backend && dotnet run
+
+# รัน frontend พร้อม LIFF mock
+cd frontend
+# .env.local ต้องมี:
+# NEXT_PUBLIC_LIFF_MOCK=true
+# NEXT_PUBLIC_API_URL=http://localhost:5000
+# NEXT_PUBLIC_TENANT_SLUG=diamond-massage
+npm run dev
+
+# รัน tests (PowerShell เท่านั้น — อย่ารันใน WSL เพราะ .NET 10 ไม่มีใน WSL)
+dotnet test tests/DiamondBooking.Tests.csproj
+cd frontend && npm test -- --ci
+```
+
+> ⚠️ PostgreSQL local: dotnet เชื่อมต่อกับ WSL PostgreSQL (ผ่าน wslrelay port 5432) ไม่ใช่ Docker
+> ⚠️ LIFF ทดสอบบน mobile ผ่าน LINE app เท่านั้น (ไม่ใช่ desktop browser)
