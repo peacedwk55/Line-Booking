@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>💎 Diamond Massage — Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f8f4ef; color: #1a1a1a; }
+
+    /* Sidebar */
+    .sidebar { width: 220px; background: #78350f; min-height: 100vh; position: fixed; left: 0; top: 0; }
+    .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .sidebar-logo h1 { color: #fde68a; font-size: 18px; font-weight: 700; }
+    .sidebar-logo p  { color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 2px; }
+    .sidebar nav a  { display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+                      color: rgba(255,255,255,0.75); text-decoration: none; font-size: 14px; transition: all .15s; }
+    .sidebar nav a:hover, .sidebar nav a.active { background: rgba(255,255,255,0.12); color: #fff; }
+
+    /* Main */
+    .main { margin-left: 220px; padding: 28px; }
+    .page-title { font-size: 22px; font-weight: 700; color: #78350f; margin-bottom: 24px; }
+
+    /* Stat cards */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: #fff; border-radius: 14px; padding: 20px; border: 1px solid #f3d9b0; }
+    .stat-card .label { font-size: 12px; color: #92400e; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .value { font-size: 32px; font-weight: 700; color: #1a1a1a; margin-top: 6px; }
+    .stat-card .sub   { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+
+    /* Table */
+    .card { background: #fff; border-radius: 14px; border: 1px solid #f3d9b0; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #fde8c0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .card-header h2 { font-size: 16px; font-weight: 700; color: #78350f; flex: 1; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #fffbf5; padding: 10px 16px; text-align: left; font-weight: 600; color: #92400e; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #fde8c0; }
+    td { padding: 12px 16px; border-bottom: 1px solid #fdf6ec; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fffdf9; }
+
+    /* Badge */
+    .badge { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    .badge-confirmed  { background: #d1fae5; color: #065f46; }
+    .badge-cancelled  { background: #fee2e2; color: #991b1b; }
+    .badge-completed  { background: #e5e7eb; color: #374151; }
+    .badge-pending    { background: #fef3c7; color: #92400e; }
+
+    /* Controls */
+    input[type=date], select { border: 1px solid #e5e7eb; border-radius: 8px; padding: 7px 12px; font-size: 13px; outline: none; }
+    input[type=date]:focus, select:focus { border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.1); }
+    .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary   { background: #d97706; color: #fff; }
+    .btn-primary:hover { background: #b45309; }
+    .btn-danger    { background: transparent; color: #ef4444; border: 1px solid #fca5a5; font-size: 12px; padding: 4px 10px; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-success   { background: transparent; color: #16a34a; border: 1px solid #86efac; font-size: 12px; padding: 4px 10px; }
+    .btn-success:hover { background: #dcfce7; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a1a; color: #fff; padding: 12px 20px;
+             border-radius: 10px; font-size: 13px; display: none; z-index: 999; }
+
+    /* Loading overlay */
+    #loading { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 998; align-items: center; justify-content: center; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 48px; color: #9ca3af; }
+    .empty p:first-child { font-size: 32px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h1>💎 Diamond Massage</h1>
+    <p>Admin Dashboard</p>
+  </div>
+  <nav>
+    <a href="#" class="active" onclick="showTab('dashboard')">📊 Dashboard</a>
+    <a href="#" onclick="showTab('bookings')">📅 การจองทั้งหมด</a>
+    <a href="#" onclick="showTab('users')">👥 ลูกค้า</a>
+  </nav>
+</div>
+
+<div class="main">
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard">
+    <div class="page-title">📊 Dashboard</div>
+    <div class="stats" id="stats-grid">
+      <div class="stat-card"><div class="label">วันนี้</div><div class="value" id="stat-today">-</div><div class="sub">การจอง</div></div>
+      <div class="stat-card"><div class="label">สัปดาห์นี้</div><div class="value" id="stat-week">-</div><div class="sub">การจอง</div></div>
+      <div class="stat-card"><div class="label">ลูกค้าทั้งหมด</div><div class="value" id="stat-users">-</div><div class="sub">คน</div></div>
+      <div class="stat-card"><div class="label">รอวันนี้</div><div class="value" id="stat-pending">-</div><div class="sub">นัดที่ยังมาไม่ถึง</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>📅 การจองวันนี้</h2>
+      </div>
+      <table><thead><tr>
+        <th>เวลา</th><th>ชื่อลูกค้า</th><th>บริการ</th><th>สถานะ</th><th>จัดการ</th>
+      </tr></thead>
+      <tbody id="today-table-body"><tr><td colspan="5" class="empty"><p>🔄</p><p>กำลังโหลด...</p></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BOOKINGS TAB -->
+  <div id="tab-bookings" style="display:none">
+    <div class="page-title">📅 การจองทั้งหมด</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>รายการจอง</h2>
+        <input type="date" id="filter-date" onchange="loadBookings()"/>
+        <select id="filter-status" onchange="loadBookings()">
+          <option value="">ทุกสถานะ</option>
+          <option value="confirmed">ยืนยันแล้ว</option>
+          <option value="cancelled">ยกเลิกแล้ว</option>
+          <option value="completed">เสร็จสิ้น</option>
+        </select>
+      </div>
+      <table><thead><tr>
+        <th>วันที่</th><th>เวลา</th><th>ลูกค้า</th><th>เบอร์</th><th>บริการ</th><th>สถานะ</th><th>หมายเหตุ</th><th>จัดการ</th>
+      </tr></thead>
+      <tbody id="bookings-table-body"><tr><td colspan="8" class="empty"><p>📭</p><p>ยังไม่มีข้อมูล</p></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- USERS TAB -->
+  <div id="tab-users" style="display:none">
+    <div class="page-title">👥 ลูกค้าทั้งหมด</div>
+    <div class="card">
+      <div class="card-header"><h2>รายชื่อลูกค้า</h2></div>
+      <table><thead><tr>
+        <th>ชื่อ</th><th>เบอร์โทร</th><th>LINE ID</th><th>จำนวนจอง</th><th>สมัครเมื่อ</th>
+      </tr></thead>
+      <tbody id="users-table-body"><tr><td colspan="5" class="empty"><p>👤</p><p>ยังไม่มีข้อมูล</p></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="loading"><div class="spinner"></div></div>
+
+<script>
+  const API   = 'https://line-booking-production-a46f.up.railway.app'
+  const SLUG  = 'diamond-massage'
+  const BASE  = `${API}/api/${SLUG}/admin`
+
+  function showTab(tab) {
+    ['dashboard','bookings','users'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none'
+    })
+    document.querySelectorAll('.sidebar nav a').forEach((a, i) => {
+      a.classList.toggle('active', ['dashboard','bookings','users'][i] === tab)
+    })
+    if (tab === 'dashboard') loadDashboard()
+    if (tab === 'bookings')  loadBookings()
+    if (tab === 'users')     loadUsers()
+  }
+
+  function toast(msg, ok = true) {
+    const el = document.getElementById('toast')
+    el.textContent = (ok ? '✅ ' : '❌ ') + msg
+    el.style.display = 'block'
+    setTimeout(() => el.style.display = 'none', 3000)
+  }
+
+  function loading(show) {
+    document.getElementById('loading').style.display = show ? 'flex' : 'none'
+  }
+
+  function statusBadge(status) {
+    const map = {
+      Confirmed: ['badge-confirmed','ยืนยันแล้ว'],
+      Cancelled: ['badge-cancelled','ยกเลิกแล้ว'],
+      Completed: ['badge-completed','เสร็จสิ้น'],
+      Pending:   ['badge-pending','รอยืนยัน'],
+    }
+    const [cls, label] = map[status] ?? ['','']
+    return `<span class="badge ${cls}">${label}</span>`
+  }
+
+  function actionBtns(booking) {
+    const btns = []
+    if (booking.status === 'Confirmed') {
+      btns.push(`<button class="btn btn-success" onclick="markComplete('${booking.id}')">✅ เสร็จ</button>`)
+      btns.push(`<button class="btn btn-danger"  onclick="cancelBooking('${booking.id}')">ยกเลิก</button>`)
+    }
+    return btns.join(' ')
+  }
+
+  async function loadDashboard() {
+    try {
+      const [dash, bookings] = await Promise.all([
+        fetch(`${BASE}/dashboard`).then(r => r.json()),
+        fetch(`${BASE}/bookings?date=${new Date().toISOString().split('T')[0]}`).then(r => r.json())
+      ])
+      document.getElementById('stat-today').textContent   = dash.todayBookings
+      document.getElementById('stat-week').textContent    = dash.weekBookings
+      document.getElementById('stat-users').textContent   = dash.totalUsers
+      document.getElementById('stat-pending').textContent = dash.pendingToday
+
+      const tbody = document.getElementById('today-table-body')
+      if (!bookings.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty"><p>🎉</p><p>ไม่มีการจองวันนี้</p></td></tr>`
+        return
+      }
+      tbody.innerHTML = bookings.map(b => `
+        <tr>
+          <td>${b.startTime} – ${b.endTime}</td>
+          <td>${b.userName}</td>
+          <td>${b.service}</td>
+          <td>${statusBadge(b.status)}</td>
+          <td>${actionBtns(b)}</td>
+        </tr>
+      `).join('')
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function loadBookings() {
+    const date   = document.getElementById('filter-date').value
+    const status = document.getElementById('filter-status').value
+    const params = new URLSearchParams()
+    if (date)   params.set('date', date)
+    if (status) params.set('status', status)
+
+    loading(true)
+    try {
+      const data = await fetch(`${BASE}/bookings?${params}`).then(r => r.json())
+      const tbody = document.getElementById('bookings-table-body')
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty"><p>📭</p><p>ไม่พบข้อมูล</p></td></tr>`
+        return
+      }
+      tbody.innerHTML = data.map(b => `
+        <tr>
+          <td>${b.date}</td>
+          <td>${b.startTime}–${b.endTime}</td>
+          <td>${b.userName}</td>
+          <td>${b.userPhone ?? '-'}</td>
+          <td>${b.service}</td>
+          <td>${statusBadge(b.status)}</td>
+          <td>${b.note ?? '-'}</td>
+          <td>${actionBtns(b)}</td>
+        </tr>
+      `).join('')
+    } finally {
+      loading(false)
+    }
+  }
+
+  async function loadUsers() {
+    loading(true)
+    try {
+      const data = await fetch(`${BASE}/users`).then(r => r.json())
+      const tbody = document.getElementById('users-table-body')
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty"><p>👤</p><p>ยังไม่มีลูกค้า</p></td></tr>`
+        return
+      }
+      tbody.innerHTML = data.map(u => `
+        <tr>
+          <td>${u.displayName ?? '(ไม่มีชื่อ)'}</td>
+          <td>${u.phone ?? '-'}</td>
+          <td style="font-size:11px;color:#9ca3af">${u.lineUserId.slice(0,16)}…</td>
+          <td>${u.bookingCount} ครั้ง</td>
+          <td>${new Date(u.createdAt).toLocaleDateString('th-TH')}</td>
+        </tr>
+      `).join('')
+    } finally {
+      loading(false)
+    }
+  }
+
+  async function markComplete(id) {
+    if (!confirm('ยืนยันว่าให้บริการเสร็จสิ้นแล้ว?')) return
+    loading(true)
+    try {
+      await fetch(`${BASE}/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' })
+      })
+      toast('อัพเดตสถานะเสร็จสิ้น')
+      loadDashboard()
+    } catch { toast('เกิดข้อผิดพลาด', false) }
+    finally { loading(false) }
+  }
+
+  async function cancelBooking(id) {
+    const reason = prompt('เหตุผลการยกเลิก (ไม่บังคับ):') ?? 'ยกเลิกโดย Admin'
+    loading(true)
+    try {
+      await fetch(`${BASE}/bookings/${id}?reason=${encodeURIComponent(reason)}`, { method: 'DELETE' })
+      toast('ยกเลิกการจองแล้ว')
+      loadDashboard()
+      loadBookings()
+    } catch { toast('เกิดข้อผิดพลาด', false) }
+    finally { loading(false) }
+  }
+
+  // Init
+  loadDashboard()
+</script>
+</body>
+</html>
