@@ -23,13 +23,14 @@ export default function BookingPage() {
   const [note,            setNote]     = useState('')
   const [loading,         setLoading]  = useState(false)
   const [bookingId,       setBookingId] = useState<string>('')
+  const [apiError,        setApiError]  = useState<string>('')
 
   // Generate next 14 days (excluding Sunday = 0)
   const availableDates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i + 1))
     .filter(d => d.getDay() !== 0)
 
   useEffect(() => {
-    if (ready) getServices().then(setServices)
+    if (ready) getServices().then(setServices).catch(e => setApiError(e?.message ?? 'API error'))
   }, [ready])
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export default function BookingPage() {
         {step === 'service' && (
           <div>
             <h2 className="font-bold text-gray-800 text-lg mt-2 mb-4">เลือกบริการ</h2>
+            {apiError && <p className="text-red-500 text-sm mb-3 bg-red-50 p-3 rounded-xl">❌ {apiError}</p>}
             <div className="space-y-3">
               {services.map(svc => (
                 <button
