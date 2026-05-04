@@ -59,6 +59,8 @@ export interface CreateBookingPayload {
   endTime:         string
   durationMinutes: number
   note?:           string
+  contactName?:    string
+  contactPhone?:   string
 }
 
 export interface Booking {

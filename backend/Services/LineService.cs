@@ -187,6 +187,26 @@ public class LineService(AppDbContext db, IHttpClientFactory http, ILogger<LineS
     }
 
     // ------------------------------------------------------------
+    // Send 15-minute pre-appointment reminder
+    // ------------------------------------------------------------
+    public async Task SendPreReminderAsync(Booking booking)
+    {
+        var tenant = await db.Tenants.FindAsync(booking.TenantId);
+        var user   = await db.Users.FindAsync(booking.UserId);
+        if (tenant == null || user == null) return;
+
+        var text = $"⏰ อีก 15 นาทีแล้วนะคะ!\n" +
+                   $"📅 วันนี้ เวลา {booking.StartTime:HH\\:mm} – {booking.EndTime:HH\\:mm}\n" +
+                   $"💆 {booking.Service?.Name ?? "บริการ"}\n" +
+                   $"Diamond Massage รอต้อนรับคุณค่ะ 🌸";
+
+        await SendTextAsync(booking.TenantId, user.LineUserId, text);
+
+        booking.PreReminderSent = true;
+        await db.SaveChangesAsync();
+    }
+
+    // ------------------------------------------------------------
     // Send LIFF link so user can book
     // ------------------------------------------------------------
     private async Task SendLiffLinkAsync(Guid tenantId, string lineUserId)

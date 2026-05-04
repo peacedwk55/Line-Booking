@@ -83,7 +83,10 @@ public class Booking
     public BookingStatus Status { get; set; } = BookingStatus.Confirmed;
     public string? Note { get; set; }
     public string? AdminNote { get; set; }
+    [MaxLength(255)] public string? ContactName { get; set; }
+    [MaxLength(20)]  public string? ContactPhone { get; set; }
     public bool ReminderSent { get; set; } = false;
+    public bool PreReminderSent { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

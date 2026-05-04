@@ -132,9 +132,9 @@
         <h2>📅 การจองวันนี้</h2>
       </div>
       <table><thead><tr>
-        <th>เวลา</th><th>ชื่อลูกค้า</th><th>บริการ</th><th>สถานะ</th><th>จัดการ</th>
+        <th>เวลา</th><th>ชื่อลูกค้า</th><th>ชื่อ/เบอร์ติดต่อ</th><th>บริการ</th><th>สถานะ</th><th>จัดการ</th>
       </tr></thead>
-      <tbody id="today-table-body"><tr><td colspan="5" class="empty"><p>🔄</p><p>กำลังโหลด...</p></td></tr></tbody>
+      <tbody id="today-table-body"><tr><td colspan="6" class="empty"><p>🔄</p><p>กำลังโหลด...</p></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -154,7 +154,7 @@
         </select>
       </div>
       <table><thead><tr>
-        <th>วันที่</th><th>เวลา</th><th>ลูกค้า</th><th>เบอร์</th><th>บริการ</th><th>สถานะ</th><th>หมายเหตุ</th><th>จัดการ</th>
+        <th>วันที่</th><th>เวลา</th><th>ลูกค้า (LINE)</th><th>ชื่อ/เบอร์ติดต่อ</th><th>บริการ</th><th>สถานะ</th><th>หมายเหตุ</th><th>จัดการ</th>
       </tr></thead>
       <tbody id="bookings-table-body"><tr><td colspan="8" class="empty"><p>📭</p><p>ยังไม่มีข้อมูล</p></td></tr></tbody>
       </table>
@@ -283,6 +283,12 @@
     return `<span class="badge ${cls}">${label}</span>`
   }
 
+  function contactCell(b) {
+    const name  = b.contactName  ? `<div style="font-weight:600">${b.contactName}</div>`  : ''
+    const phone = b.contactPhone ? `<div style="color:#d97706;font-size:12px">📞 ${b.contactPhone}</div>` : ''
+    return (name || phone) ? name + phone : '<span style="color:#9ca3af">-</span>'
+  }
+
   function actionBtns(booking) {
     const btns = []
     if (booking.status === 'Confirmed') {
@@ -322,6 +328,7 @@
         <tr>
           <td>${b.startTime} – ${b.endTime}</td>
           <td>${b.userName}</td>
+          <td>${contactCell(b)}</td>
           <td>${b.service}</td>
           <td>${statusBadge(b.status)}</td>
           <td>${actionBtns(b)}</td>
@@ -352,7 +359,7 @@
           <td>${b.date}</td>
           <td>${b.startTime}–${b.endTime}</td>
           <td>${b.userName}</td>
-          <td>${b.userPhone ?? '-'}</td>
+          <td>${contactCell(b)}</td>
           <td>${b.service}</td>
           <td>${statusBadge(b.status)}</td>
           <td>${b.note ?? '-'}</td>

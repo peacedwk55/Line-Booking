@@ -65,7 +65,9 @@ public class BookingController(AppDbContext db, BookingService svc) : Controller
             TimeOnly.Parse(dto.StartTime),
             TimeOnly.Parse(dto.EndTime),
             dto.DurationMinutes,
-            dto.Note
+            dto.Note,
+            dto.ContactName,
+            dto.ContactPhone
         );
 
         var result = await svc.CreateAsync(tenant.Id, req);
@@ -155,5 +157,7 @@ public record CreateBookingDto(
     string  StartTime,
     string  EndTime,
     int     DurationMinutes,
-    string? Note
+    string? Note,
+    string? ContactName,
+    string? ContactPhone
 );

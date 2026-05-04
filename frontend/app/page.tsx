@@ -28,6 +28,8 @@ export default function BookingPage() {
   const [slots,           setSlots]    = useState<Slot[]>([])
   const [selectedSlot,    setSlot]     = useState<Slot | null>(null)
   const [note,            setNote]     = useState('')
+  const [contactName,     setContactName]  = useState('')
+  const [contactPhone,    setContactPhone] = useState('')
   const [loading,         setLoading]  = useState(false)
   const [bookingId,       setBookingId] = useState<string>('')
   const [apiError,        setApiError]  = useState<string>('')
@@ -76,7 +78,9 @@ export default function BookingPage() {
         startTime:       selectedSlot.start,
         endTime:         selectedSlot.end,
         durationMinutes: selectedDuration,
-        note
+        note,
+        contactName:  contactName.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
       })
       setBookingId(result.bookingId)
       setStep('done')
@@ -303,6 +307,28 @@ export default function BookingPage() {
               </div>
             </div>
 
+            <div className="mb-3">
+              <label className="text-sm text-gray-600 mb-1.5 block">ชื่อที่ให้เรียก <span className="text-red-400">*</span></label>
+              <input
+                type="text"
+                value={contactName}
+                onChange={e => setContactName(e.target.value)}
+                placeholder="เช่น คุณนุ่น, คุณมิ้น"
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="text-sm text-gray-600 mb-1.5 block">เบอร์โทรติดต่อ <span className="text-red-400">*</span></label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={e => setContactPhone(e.target.value)}
+                placeholder="เช่น 081-234-5678"
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+
             <div className="mb-4">
               <label className="text-sm text-gray-600 mb-1.5 block">หมายเหตุ (ไม่บังคับ)</label>
               <textarea
@@ -316,7 +342,7 @@ export default function BookingPage() {
 
             <button
               onClick={handleConfirm}
-              disabled={loading}
+              disabled={loading || !contactName.trim() || !contactPhone.trim()}
               className="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold py-4 rounded-2xl shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed text-base"
             >
               {loading ? '⏳ กำลังจอง...' : '✅ ยืนยันการจอง'}
@@ -344,6 +370,7 @@ export default function BookingPage() {
               onClick={() => {
                 setStep('service'); setService(null); setDuration(60)
                 setDate(''); setSlot(null); setNote(''); setBookingId('')
+                setContactName(''); setContactPhone('')
               }}
               className="w-full border border-amber-400 text-amber-600 font-semibold py-3.5 rounded-2xl hover:bg-amber-50 transition-all"
             >

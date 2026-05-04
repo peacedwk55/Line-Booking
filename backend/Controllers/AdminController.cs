@@ -75,6 +75,8 @@ public class AdminController(AppDbContext db, BookingService svc, IConfiguration
                 userPhone   = b.User.Phone,
                 note        = b.Note,
                 adminNote   = b.AdminNote,
+                contactName = b.ContactName,
+                contactPhone= b.ContactPhone,
                 createdAt   = b.CreatedAt
             })
             .ToListAsync();

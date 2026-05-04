@@ -40,12 +40,21 @@ builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
 // ── Quartz (reminder job at 18:00 Bangkok = 11:00 UTC) ───────────
 builder.Services.AddQuartz(q =>
 {
-    var key = new JobKey("reminder-job");
-    q.AddJob<ReminderJob>(opts => opts.WithIdentity(key));
+    // Daily reminder at 18:00 Bangkok (11:00 UTC) — sends reminder for tomorrow
+    var dailyKey = new JobKey("reminder-job");
+    q.AddJob<ReminderJob>(opts => opts.WithIdentity(dailyKey));
     q.AddTrigger(opts => opts
-        .ForJob(key)
+        .ForJob(dailyKey)
         .WithIdentity("reminder-trigger")
-        .WithCronSchedule("0 0 11 * * ?"));  // 11:00 UTC = 18:00 Bangkok
+        .WithCronSchedule("0 0 11 * * ?"));
+
+    // Pre-appointment reminder — runs every 5 min, notifies 15 min before start
+    var preKey = new JobKey("pre-reminder-job");
+    q.AddJob<PreAppointmentReminderJob>(opts => opts.WithIdentity(preKey));
+    q.AddTrigger(opts => opts
+        .ForJob(preKey)
+        .WithIdentity("pre-reminder-trigger")
+        .WithCronSchedule("0 0/5 * * * ?"));  // every 5 minutes
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 

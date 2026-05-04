@@ -10,4 +10,5 @@ public interface ILineService
     Task SendTextAsync(Guid tenantId, string lineUserId, string text);
     Task SendBookingConfirmationAsync(Booking booking);
     Task SendReminderAsync(Booking booking);
+    Task SendPreReminderAsync(Booking booking);
 }

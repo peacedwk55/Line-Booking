@@ -14,7 +14,9 @@ public record CreateBookingRequest(
     TimeOnly  StartTime,
     TimeOnly  EndTime,
     int       DurationMinutes,
-    string?   Note
+    string?   Note,
+    string?   ContactName,
+    string?   ContactPhone
 );
 
 public record BookingResult(bool Success, string Message, Booking? Booking);
@@ -91,7 +93,9 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
             EndTime         = req.EndTime,
             DurationMinutes = req.DurationMinutes,
             Status          = BookingStatus.Confirmed,
-            Note            = req.Note
+            Note            = req.Note,
+            ContactName     = req.ContactName,
+            ContactPhone    = req.ContactPhone
         };
 
         db.Bookings.Add(booking);
