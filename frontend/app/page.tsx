@@ -48,7 +48,16 @@ export default function BookingPage() {
       setSlot(null)
       setLoading(true)
       getSlots(selectedDate, selectedDuration)
-        .then(setSlots)
+        .then(data => {
+          const today = format(new Date(), 'yyyy-MM-dd')
+          if (selectedDate === today) {
+            const cutoff = new Date(Date.now() + 60 * 60 * 1000)
+            const hhmm = `${String(cutoff.getHours()).padStart(2,'0')}:${String(cutoff.getMinutes()).padStart(2,'0')}`
+            setSlots(data.filter(s => s.start >= hhmm))
+          } else {
+            setSlots(data)
+          }
+        })
         .catch(() => setSlots([]))
         .finally(() => setLoading(false))
     }
@@ -234,6 +243,12 @@ export default function BookingPage() {
             </p>
             {loading ? (
               <div className="text-center py-8 text-amber-600">กำลังโหลดช่วงเวลา...</div>
+            ) : slots.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <p className="text-3xl mb-2">😔</p>
+                <p className="font-medium">ไม่มีช่วงเวลาว่างสำหรับวันนี้</p>
+                <p className="text-sm mt-1">กรุณาเลือกวันอื่น</p>
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {slots.map(slot => (
