@@ -55,6 +55,8 @@
     .btn-danger:hover { background: #fee2e2; }
     .btn-success   { background: transparent; color: #16a34a; border: 1px solid #86efac; font-size: 12px; padding: 4px 10px; }
     .btn-success:hover { background: #dcfce7; }
+    input[type=number] { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; font-size: 13px; outline: none; text-align: center; }
+    input[type=number]:focus { border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.1); }
 
     /* Toast */
     #toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a1a; color: #fff; padding: 12px 20px;
@@ -81,6 +83,7 @@
     <a href="#" class="active" onclick="showTab('dashboard')">📊 Dashboard</a>
     <a href="#" onclick="showTab('bookings')">📅 การจองทั้งหมด</a>
     <a href="#" onclick="showTab('users')">👥 ลูกค้า</a>
+    <a href="#" onclick="showTab('slots')">⚙️ ตั้งค่าคิว</a>
   </nav>
 </div>
 
@@ -141,6 +144,28 @@
       </table>
     </div>
   </div>
+
+  <!-- SLOTS TAB -->
+  <div id="tab-slots" style="display:none">
+    <div class="page-title">⚙️ ตั้งค่าจำนวนคิว</div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <h2>อัพเดตทุก slot พร้อมกัน</h2>
+        <input type="number" id="bulk-max" min="1" max="20" value="2" style="width:80px"/>
+        <button class="btn btn-primary" onclick="bulkUpdateSlots()">อัพเดตทั้งหมด</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>จำนวนคิวแต่ละช่วงเวลา</h2></div>
+      <table><thead><tr>
+        <th>วัน</th><th>เวลา</th><th>จำนวนคิว (สูงสุด)</th><th>บันทึก</th>
+      </tr></thead>
+      <tbody id="slots-table-body"><tr><td colspan="4" class="empty"><p>🔄</p><p>กำลังโหลด...</p></td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -151,16 +176,19 @@
   const SLUG  = 'diamond-massage'
   const BASE  = `${API}/api/${SLUG}/admin`
 
+  const TABS = ['dashboard','bookings','users','slots']
+
   function showTab(tab) {
-    ['dashboard','bookings','users'].forEach(t => {
+    TABS.forEach(t => {
       document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none'
     })
     document.querySelectorAll('.sidebar nav a').forEach((a, i) => {
-      a.classList.toggle('active', ['dashboard','bookings','users'][i] === tab)
+      a.classList.toggle('active', TABS[i] === tab)
     })
     if (tab === 'dashboard') loadDashboard()
     if (tab === 'bookings')  loadBookings()
     if (tab === 'users')     loadUsers()
+    if (tab === 'slots')     loadSlots()
   }
 
   function toast(msg, ok = true) {
@@ -302,6 +330,65 @@
       toast('ยกเลิกการจองแล้ว')
       loadDashboard()
       loadBookings()
+    } catch { toast('เกิดข้อผิดพลาด', false) }
+    finally { loading(false) }
+  }
+
+  const DAY_TH = ['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์', 'อาทิตย์']
+
+  async function loadSlots() {
+    loading(true)
+    try {
+      const data = await fetch(`${BASE}/slots`).then(r => r.json())
+      const tbody = document.getElementById('slots-table-body')
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty"><p>⚙️</p><p>ไม่มีข้อมูล</p></td></tr>`
+        return
+      }
+      tbody.innerHTML = data.map(s => `
+        <tr>
+          <td>${DAY_TH[s.dayOfWeek] ?? s.dayOfWeek}</td>
+          <td>${s.startTime} – ${s.endTime}</td>
+          <td>
+            <input type="number" id="slot-${s.id}" min="1" max="20" value="${s.maxBookings}" style="width:70px"/>
+          </td>
+          <td>
+            <button class="btn btn-success" onclick="saveSlot('${s.id}')">บันทึก</button>
+          </td>
+        </tr>
+      `).join('')
+    } catch(e) { toast('โหลดข้อมูลไม่สำเร็จ', false) }
+    finally { loading(false) }
+  }
+
+  async function saveSlot(id) {
+    const val = parseInt(document.getElementById(`slot-${id}`).value)
+    if (!val || val < 1) return toast('กรุณาใส่จำนวนที่ถูกต้อง', false)
+    loading(true)
+    try {
+      await fetch(`${BASE}/slots/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxBookings: val })
+      })
+      toast('บันทึกแล้ว')
+    } catch { toast('เกิดข้อผิดพลาด', false) }
+    finally { loading(false) }
+  }
+
+  async function bulkUpdateSlots() {
+    const val = parseInt(document.getElementById('bulk-max').value)
+    if (!val || val < 1) return toast('กรุณาใส่จำนวนที่ถูกต้อง', false)
+    if (!confirm(`อัพเดตทุก slot เป็น ${val} คิว?`)) return
+    loading(true)
+    try {
+      await fetch(`${BASE}/slots/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxBookings: val })
+      })
+      toast(`อัพเดตทุก slot เป็น ${val} คิวแล้ว`)
+      loadSlots()
     } catch { toast('เกิดข้อผิดพลาด', false) }
     finally { loading(false) }
   }

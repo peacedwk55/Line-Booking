@@ -121,6 +121,68 @@ public class AdminController(AppDbContext db, BookingService svc) : ControllerBa
         return Ok(users);
     }
 
+    // GET /api/diamond-massage/admin/slots
+    [HttpGet("slots")]
+    public async Task<IActionResult> GetSlots([FromRoute] string tenantSlug)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var slots = await db.TimeSlots
+            .Where(s => s.TenantId == tenant.Id && s.IsActive)
+            .OrderBy(s => s.DayOfWeek).ThenBy(s => s.StartTime)
+            .Select(s => new {
+                id          = s.Id,
+                dayOfWeek   = s.DayOfWeek,
+                startTime   = s.StartTime.ToString("HH:mm"),
+                endTime     = s.EndTime.ToString("HH:mm"),
+                maxBookings = s.MaxBookings
+            })
+            .ToListAsync();
+
+        return Ok(slots);
+    }
+
+    // POST /api/diamond-massage/admin/slots/bulk
+    [HttpPost("slots/bulk")]
+    public async Task<IActionResult> BulkUpdateSlots(
+        [FromRoute] string     tenantSlug,
+        [FromBody]  UpdateSlotDto dto)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        if (dto.MaxBookings is null or <= 0)
+            return BadRequest(new { message = "MaxBookings must be > 0" });
+
+        await db.TimeSlots
+            .Where(s => s.TenantId == tenant.Id && s.IsActive)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.MaxBookings, dto.MaxBookings.Value));
+
+        return Ok(new { message = "Updated all slots" });
+    }
+
+    // POST /api/diamond-massage/admin/slots/{id}
+    [HttpPost("slots/{id}")]
+    public async Task<IActionResult> UpdateSlot(
+        [FromRoute] string     tenantSlug,
+        [FromRoute] Guid       id,
+        [FromBody]  UpdateSlotDto dto)
+    {
+        var tenant = await ResolveTenant(tenantSlug);
+        if (tenant == null) return NotFound();
+
+        var slot = await db.TimeSlots
+            .FirstOrDefaultAsync(s => s.Id == id && s.TenantId == tenant.Id);
+        if (slot == null) return NotFound();
+
+        if (dto.MaxBookings is > 0)
+            slot.MaxBookings = dto.MaxBookings.Value;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Updated" });
+    }
+
     // GET /api/diamond-massage/admin/dashboard
     [HttpGet("dashboard")]
     public async Task<IActionResult> Dashboard([FromRoute] string tenantSlug)
@@ -150,3 +212,4 @@ public class AdminController(AppDbContext db, BookingService svc) : ControllerBa
 }
 
 public record UpdateBookingDto(string? Status, string? AdminNote);
+public record UpdateSlotDto(int? MaxBookings);
