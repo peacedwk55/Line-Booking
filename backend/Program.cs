@@ -83,7 +83,14 @@ using (var scope = app.Services.CreateScope())
     if (!db.Services.Any(s => s.TenantId == tenantId) ||
          db.Services.Any(s => s.TenantId == tenantId && s.Name.Contains("นาที")))
     {
+        // ServiceId is nullable — detach bookings before deleting services
+        await db.Bookings
+            .Where(b => b.TenantId == tenantId && b.ServiceId != null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ServiceId, (Guid?)null));
+
         db.Services.RemoveRange(db.Services.Where(s => s.TenantId == tenantId));
+        await db.SaveChangesAsync();
+
         db.Services.AddRange(
             new Service { TenantId = tenantId, Name = "นวดแผนไทย",  Description = "ผ่อนคลายกล้ามเนื้อแบบดั้งเดิม", PricePerHour = 350, SortOrder = 1 },
             new Service { TenantId = tenantId, Name = "นวดน้ำมัน",   Description = "อโรมาเธอราพีช่วยผ่อนคลาย",      PricePerHour = 450, SortOrder = 2 },
