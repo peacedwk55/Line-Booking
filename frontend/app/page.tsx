@@ -323,10 +323,15 @@ export default function BookingPage() {
               <input
                 type="tel"
                 value={contactPhone}
-                onChange={e => setContactPhone(e.target.value)}
-                placeholder="เช่น 081-234-5678"
-                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                onChange={e => setContactPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="เช่น 0812345678"
+                inputMode="numeric"
+                maxLength={10}
+                className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 ${contactPhone.length > 0 && contactPhone.length < 10 ? 'border-red-300' : 'border-gray-200'}`}
               />
+              {contactPhone.length > 0 && contactPhone.length < 10 && (
+                <p className="text-red-400 text-xs mt-1">กรุณากรอกเบอร์ให้ครบ 10 หลัก</p>
+              )}
             </div>
 
             <div className="mb-4">
@@ -342,7 +347,7 @@ export default function BookingPage() {
 
             <button
               onClick={handleConfirm}
-              disabled={loading || !contactName.trim() || !contactPhone.trim()}
+              disabled={loading || !contactName.trim() || contactPhone.length !== 10}
               className="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold py-4 rounded-2xl shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed text-base"
             >
               {loading ? '⏳ กำลังจอง...' : '✅ ยืนยันการจอง'}
