@@ -214,7 +214,7 @@ export default function BookingPage() {
               min={minDate}
               max={maxDate}
               value={selectedDate}
-              onChange={e => setDate(e.target.value)}
+              onChange={e => { if (e.target.value >= minDate) setDate(e.target.value) }}
               className="w-full border-2 border-amber-200 rounded-2xl p-4 text-lg text-gray-700 focus:outline-none focus:border-amber-400 bg-white"
             />
             {selectedDate && new Date(selectedDate).getDay() === 0 && (
