@@ -285,8 +285,18 @@
   function actionBtns(booking) {
     const btns = []
     if (booking.status === 'Confirmed') {
-      btns.push(`<button class="btn btn-success" onclick="markComplete('${booking.id}')">✅ เสร็จ</button>`)
-      btns.push(`<button class="btn btn-danger"  onclick="cancelBooking('${booking.id}')">ยกเลิก</button>`)
+      // Bangkok = UTC+7; compare booking date+endTime against now
+      const nowBkk   = new Date(Date.now() + 7 * 60 * 60 * 1000)
+      const todayBkk = nowBkk.toISOString().slice(0, 10)
+      const timeBkk  = nowBkk.toISOString().slice(11, 16)
+      const ended    = booking.date < todayBkk || (booking.date === todayBkk && booking.endTime <= timeBkk)
+
+      if (ended) {
+        btns.push(`<button class="btn btn-success" onclick="markComplete('${booking.id}')">✅ เสร็จ</button>`)
+      } else {
+        btns.push(`<button class="btn btn-success" disabled title="ยังไม่ถึงเวลาเสร็จสิ้น" style="opacity:0.35;cursor:not-allowed">✅ เสร็จ</button>`)
+      }
+      btns.push(`<button class="btn btn-danger" onclick="cancelBooking('${booking.id}')">ยกเลิก</button>`)
     }
     return btns.join(' ')
   }
