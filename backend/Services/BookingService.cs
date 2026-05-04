@@ -182,7 +182,7 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
                 overlaps < maxConcurrent
             ));
 
-            current = current.AddMinutes(30);
+            current = current.AddMinutes(durationMinutes);
         }
 
         return results;

@@ -249,7 +249,7 @@ export default function BookingPage() {
                           : 'bg-white border border-amber-100 hover:border-amber-400 text-gray-700 active:scale-[0.97]'
                     }`}
                   >
-                    <p className="font-bold">{slot.start}</p>
+                    <p className="font-bold">{slot.start} – {slot.end}</p>
                     <p className="text-xs mt-0.5 opacity-70">
                       {slot.available ? `ว่าง ${slot.remaining} คิว` : 'เต็ม'}
                     </p>
