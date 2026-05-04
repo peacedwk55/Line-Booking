@@ -140,7 +140,7 @@ public class LineService(AppDbContext db, IHttpClientFactory http, ILogger<LineS
         if (tenant == null || user == null) return;
 
         var dateStr  = booking.BookingDate.ToString("dd MMM yyyy");
-        var timeStr  = $"{booking.StartTime:hh\\:mm} – {booking.EndTime:hh\\:mm}";
+        var timeStr  = $"{booking.StartTime:HH\\:mm} – {booking.EndTime:HH\\:mm}";
         var service  = booking.Service?.Name ?? "บริการ";
 
         var flex = BuildConfirmationFlex(dateStr, timeStr, service, booking.Id.ToString());
@@ -167,7 +167,7 @@ public class LineService(AppDbContext db, IHttpClientFactory http, ILogger<LineS
         if (tenant == null || user == null) return;
 
         var text = $"💆 แจ้งเตือนการนัดหมาย!\n" +
-                   $"พรุ่งนี้: {booking.BookingDate:dd MMM} เวลา {booking.StartTime:hh\\:mm}\n" +
+                   $"พรุ่งนี้: {booking.BookingDate:dd MMM} เวลา {booking.StartTime:HH\\:mm}\n" +
                    $"บริการ: {booking.Service?.Name ?? "-"}\n" +
                    $"Diamond Massage รอต้อนรับคุณค่ะ 🌸";
 
