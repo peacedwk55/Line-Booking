@@ -23,6 +23,8 @@ public class AdminControllerTests : IClassFixture<WebApplicationFactory<Program>
         _factory = factory.WithWebHostBuilder(b => b.ConfigureServices(services =>
         {
             ReplaceWithInMemory(services, "admin-test-db");
+            services.AddAuthentication(TestAuthHandler.Scheme)
+                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
         }));
 
         // Seed after factory is configured — avoids calling BuildServiceProvider() inside ConfigureServices

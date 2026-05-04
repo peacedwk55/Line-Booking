@@ -51,8 +51,8 @@ export default function BookingPage() {
         .then(data => {
           const today = format(new Date(), 'yyyy-MM-dd')
           if (selectedDate === today) {
-            const cutoff = new Date(Date.now() + 60 * 60 * 1000)
-            const hhmm = `${String(cutoff.getHours()).padStart(2,'0')}:${String(cutoff.getMinutes()).padStart(2,'0')}`
+            const now = new Date()
+            const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
             setSlots(data.filter(s => s.start >= hhmm))
           } else {
             setSlots(data)

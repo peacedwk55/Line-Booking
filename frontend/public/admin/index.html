@@ -70,9 +70,36 @@
     /* Empty state */
     .empty { text-align: center; padding: 48px; color: #9ca3af; }
     .empty p:first-child { font-size: 32px; margin-bottom: 8px; }
+
+    /* Login overlay */
+    #login-overlay { display:none; position:fixed; inset:0; background:#f8f4ef; z-index:2000; align-items:center; justify-content:center; }
+    .login-box { background:#fff; border-radius:20px; padding:40px; width:320px; border:1px solid #f3d9b0; box-shadow:0 10px 40px rgba(0,0,0,.08); }
+    .login-box h1 { color:#78350f; font-size:20px; font-weight:700; text-align:center; margin-bottom:4px; }
+    .login-box p  { color:#9ca3af; font-size:13px; text-align:center; margin-bottom:28px; }
+    #login-error  { display:none; background:#fee2e2; color:#991b1b; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+    .login-input  { width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:12px 16px; font-size:14px; outline:none; box-sizing:border-box; margin-bottom:12px; }
+    .login-input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.1); }
+    .login-btn { width:100%; background:#d97706; color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:600; cursor:pointer; }
+    .login-btn:hover { background:#b45309; }
+
+    /* Logout button */
+    .logout-btn { display:flex; align-items:center; gap:10px; padding:12px 20px; color:rgba(255,255,255,0.6); font-size:13px; cursor:pointer; border:none; background:transparent; width:100%; transition:all .15s; }
+    .logout-btn:hover { background:rgba(255,255,255,.1); color:#fff; }
   </style>
 </head>
 <body>
+
+<!-- Login overlay -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h1>💎 Diamond Massage</h1>
+    <p>Admin Dashboard</p>
+    <div id="login-error"></div>
+    <input class="login-input" type="password" id="login-password" placeholder="รหัสผ่าน"
+           onkeydown="if(event.key==='Enter') doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+  </div>
+</div>
 
 <div class="sidebar">
   <div class="sidebar-logo">
@@ -85,6 +112,7 @@
     <a href="#" onclick="showTab('users')">👥 ลูกค้า</a>
     <a href="#" onclick="showTab('slots')">⚙️ ตั้งค่าคิว</a>
   </nav>
+  <button class="logout-btn" onclick="logout()">🚪 ออกจากระบบ</button>
 </div>
 
 <div class="main">
@@ -176,6 +204,46 @@
   const SLUG  = 'diamond-massage'
   const BASE  = `${API}/api/${SLUG}/admin`
 
+  // ── Auth ──────────────────────────────────────────────────────────
+  let token = localStorage.getItem('admin_token') || ''
+
+  async function authFetch(url, options = {}) {
+    const res = await fetch(url, {
+      ...options,
+      headers: { ...(options.headers || {}), 'Authorization': `Bearer ${token}` }
+    })
+    if (res.status === 401) { logout(); throw new Error('Unauthorized') }
+    return res
+  }
+
+  async function doLogin() {
+    const password = document.getElementById('login-password').value
+    const errEl    = document.getElementById('login-error')
+    errEl.style.display = 'none'
+    try {
+      const res = await fetch(`${BASE}/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ password })
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      token = data.token
+      localStorage.setItem('admin_token', token)
+      document.getElementById('login-overlay').style.display = 'none'
+      loadDashboard()
+    } catch {
+      errEl.textContent    = '❌ รหัสผ่านไม่ถูกต้อง'
+      errEl.style.display  = 'block'
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('admin_token')
+    token = ''
+    document.getElementById('login-overlay').style.display = 'flex'
+  }
+
   const TABS = ['dashboard','bookings','users','slots']
 
   function showTab(tab) {
@@ -225,8 +293,8 @@
   async function loadDashboard() {
     try {
       const [dash, bookings] = await Promise.all([
-        fetch(`${BASE}/dashboard`).then(r => r.json()),
-        fetch(`${BASE}/bookings?date=${new Date().toISOString().split('T')[0]}`).then(r => r.json())
+        authFetch(`${BASE}/dashboard`).then(r => r.json()),
+        authFetch(`${BASE}/bookings?date=${new Date().toISOString().split('T')[0]}`).then(r => r.json())
       ])
       document.getElementById('stat-today').textContent   = dash.todayBookings
       document.getElementById('stat-week').textContent    = dash.weekBookings
@@ -261,7 +329,7 @@
 
     loading(true)
     try {
-      const data = await fetch(`${BASE}/bookings?${params}`).then(r => r.json())
+      const data = await authFetch(`${BASE}/bookings?${params}`).then(r => r.json())
       const tbody = document.getElementById('bookings-table-body')
       if (!data.length) {
         tbody.innerHTML = `<tr><td colspan="8" class="empty"><p>📭</p><p>ไม่พบข้อมูล</p></td></tr>`
@@ -287,7 +355,7 @@
   async function loadUsers() {
     loading(true)
     try {
-      const data = await fetch(`${BASE}/users`).then(r => r.json())
+      const data = await authFetch(`${BASE}/users`).then(r => r.json())
       const tbody = document.getElementById('users-table-body')
       if (!data.length) {
         tbody.innerHTML = `<tr><td colspan="5" class="empty"><p>👤</p><p>ยังไม่มีลูกค้า</p></td></tr>`
@@ -311,7 +379,7 @@
     if (!confirm('ยืนยันว่าให้บริการเสร็จสิ้นแล้ว?')) return
     loading(true)
     try {
-      await fetch(`${BASE}/bookings/${id}`, {
+      await authFetch(`${BASE}/bookings/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'completed' })
@@ -326,7 +394,7 @@
     const reason = prompt('เหตุผลการยกเลิก (ไม่บังคับ):') ?? 'ยกเลิกโดย Admin'
     loading(true)
     try {
-      await fetch(`${BASE}/bookings/${id}?reason=${encodeURIComponent(reason)}`, { method: 'DELETE' })
+      await authFetch(`${BASE}/bookings/${id}?reason=${encodeURIComponent(reason)}`, { method: 'DELETE' })
       toast('ยกเลิกการจองแล้ว')
       loadDashboard()
       loadBookings()
@@ -339,7 +407,7 @@
   async function loadSlots() {
     loading(true)
     try {
-      const data = await fetch(`${BASE}/slots`).then(r => r.json())
+      const data = await authFetch(`${BASE}/slots`).then(r => r.json())
       const tbody = document.getElementById('slots-table-body')
       if (!data.length) {
         tbody.innerHTML = `<tr><td colspan="4" class="empty"><p>⚙️</p><p>ไม่มีข้อมูล</p></td></tr>`
@@ -366,7 +434,7 @@
     if (!val || val < 1) return toast('กรุณาใส่จำนวนที่ถูกต้อง', false)
     loading(true)
     try {
-      await fetch(`${BASE}/slots/${id}`, {
+      await authFetch(`${BASE}/slots/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ maxBookings: val })
@@ -382,7 +450,7 @@
     if (!confirm(`อัพเดตทุก slot เป็น ${val} คิว?`)) return
     loading(true)
     try {
-      await fetch(`${BASE}/slots/bulk`, {
+      await authFetch(`${BASE}/slots/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ maxBookings: val })
@@ -394,7 +462,7 @@
   }
 
   // Init
-  loadDashboard()
+  if (token) { loadDashboard() } else { document.getElementById('login-overlay').style.display = 'flex' }
 </script>
 </body>
 </html>

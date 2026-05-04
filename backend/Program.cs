@@ -5,9 +5,12 @@ using DiamondBooking.Data;
 using DiamondBooking.Jobs;
 using DiamondBooking.Models;
 using DiamondBooking.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Quartz;
 using Serilog;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +48,22 @@ builder.Services.AddQuartz(q =>
         .WithCronSchedule("0 0 11 * * ?"));  // 11:00 UTC = 18:00 Bangkok
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+
+// ── JWT Authentication ────────────────────────────────────────────
+var jwtSecret = builder.Configuration["JWT_SECRET"] ?? "diamond-massage-jwt-secret-key-2026-demo";
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opt =>
+    {
+        opt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = false,
+            ValidateAudience         = false,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+    });
+builder.Services.AddAuthorization();
 
 // ── Controllers + Swagger ─────────────────────────────────────────
 builder.Services.AddControllers();
@@ -127,6 +146,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 // Health check endpoint for Railway

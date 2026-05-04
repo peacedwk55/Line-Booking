@@ -4,15 +4,42 @@
 using DiamondBooking.Data;
 using DiamondBooking.Models;
 using DiamondBooking.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace DiamondBooking.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/{tenantSlug}/admin")]
-public class AdminController(AppDbContext db, BookingService svc) : ControllerBase
+public class AdminController(AppDbContext db, BookingService svc, IConfiguration config) : ControllerBase
 {
+    // POST /api/diamond-massage/admin/login
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public IActionResult Login([FromRoute] string tenantSlug, [FromBody] LoginDto dto)
+    {
+        var adminPassword = config["ADMIN_PASSWORD"] ?? "diamond2026";
+        if (dto.Password != adminPassword)
+            return Unauthorized(new { message = "รหัสผ่านไม่ถูกต้อง" });
+
+        var secret = config["JWT_SECRET"] ?? "diamond-massage-jwt-secret-key-2026-demo";
+        var key    = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var token  = new JwtSecurityToken(
+            claims:            [new Claim("slug", tenantSlug)],
+            expires:           DateTime.UtcNow.AddDays(30),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+        );
+
+        return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+    }
+
+
     // GET /api/diamond-massage/admin/bookings?date=2025-02-01&status=confirmed
     [HttpGet("bookings")]
     public async Task<IActionResult> GetBookings(
@@ -211,5 +238,6 @@ public class AdminController(AppDbContext db, BookingService svc) : ControllerBa
         await db.Tenants.FirstOrDefaultAsync(t => t.Slug == slug && t.IsActive);
 }
 
+public record LoginDto(string Password);
 public record UpdateBookingDto(string? Status, string? AdminNote);
 public record UpdateSlotDto(int? MaxBookings);

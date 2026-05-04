@@ -159,10 +159,10 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
         var maxConcurrent = opSlot.MaxBookings;
         var results       = new List<SlotInfo>();
 
-        // For today: only show slots starting at least 1 hour from now (Bangkok = UTC+7)
+        // For today: only show slots starting from now (Bangkok = UTC+7)
         var todayBangkok = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
         var nowBangkok   = TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
-        var minStart     = date == todayBangkok ? nowBangkok.AddMinutes(60) : TimeOnly.MinValue;
+        var minStart     = date == todayBangkok ? nowBangkok : TimeOnly.MinValue;
 
         var current     = opSlot.StartTime;
         var latestStart = opSlot.EndTime.AddMinutes(-durationMinutes);
