@@ -53,11 +53,64 @@ public class LineService(AppDbContext db, IHttpClientFactory http, ILogger<LineS
             }
             else if (type == "message")
             {
-                var text = ev.GetProperty("message").GetProperty("text").GetString()?.Trim();
-                if (text == "จองนัด" || text == "book")
-                    await SendLiffLinkAsync(tenantId, lineId);
+                var msgType = ev.GetProperty("message").GetProperty("type").GetString();
+                if (msgType != "text") continue;
+
+                var text = ev.GetProperty("message").GetProperty("text").GetString()?.Trim().ToLower() ?? "";
+                await HandleTextMessageAsync(tenantId, lineId, text);
             }
         }
+    }
+
+    // ------------------------------------------------------------
+    // Route incoming text message to appropriate reply
+    // ------------------------------------------------------------
+    private async Task HandleTextMessageAsync(Guid tenantId, string lineUserId, string text)
+    {
+        // Booking intent: จอง / นัด / เวลา / ว่าง / book
+        var bookingKeywords = new[] { "จองนัด", "จอง", "นัด", "เวลา", "ว่าง", "book", "booking", "นัดหมาย", "คิว" };
+        if (bookingKeywords.Any(k => text.Contains(k)))
+        {
+            await SendLiffLinkAsync(tenantId, lineUserId);
+            return;
+        }
+
+        // Greeting: สวัสดี / หวัดดี / hello / hi / ดีค่ะ / ดีครับ
+        var greetKeywords = new[] { "สวัสดี", "หวัดดี", "hello", "hi", "ดีครับ", "ดีค่ะ", "ดีนะ", "ไง" };
+        if (greetKeywords.Any(k => text.Contains(k)))
+        {
+            await SendTextAsync(tenantId, lineUserId,
+                "🌸 สวัสดีค่ะ ยินดีต้อนรับสู่ Diamond Massage!\n\n" +
+                "เรามีบริการนวดหลายแบบค่ะ สนใจนัดหมายได้เลยนะคะ 😊\n\n" +
+                "💬 พิมพ์ 'บริการ' เพื่อดูรายการและราคา\n" +
+                "📅 พิมพ์ 'จอง' เพื่อจองนัดหมายได้เลยค่ะ");
+            return;
+        }
+
+        // Service / price inquiry: บริการ / ราคา / นวด / มีอะไร
+        var serviceKeywords = new[] { "บริการ", "ราคา", "นวด", "มีอะไร", "มีอะไรบ้าง", "แนะนำ", "price" };
+        if (serviceKeywords.Any(k => text.Contains(k)))
+        {
+            var services = await db.Services
+                .Where(s => s.TenantId == tenantId)
+                .OrderBy(s => s.SortOrder)
+                .ToListAsync();
+
+            var lines = services.Select(s =>
+                $"• {s.Name} — {s.PricePerHour} บ./ชม.\n  {s.Description}");
+
+            await SendTextAsync(tenantId, lineUserId,
+                "💆 บริการของเราค่ะ\n\n" +
+                string.Join("\n\n", lines) +
+                "\n\n📅 สนใจนัดได้เลยนะคะ พิมพ์ 'จอง' ได้เลยค่ะ 🌸");
+            return;
+        }
+
+        // Fallback
+        await SendTextAsync(tenantId, lineUserId,
+            "🌸 ขอบคุณที่ทักมาค่ะ\n\n" +
+            "📅 พิมพ์ 'จอง' — เพื่อจองนัดหมาย\n" +
+            "💆 พิมพ์ 'บริการ' — เพื่อดูรายการและราคา");
     }
 
     // ------------------------------------------------------------
