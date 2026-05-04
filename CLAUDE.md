@@ -28,12 +28,20 @@
 
 ## Production URLs (2026-04-30)
 
+### Dashboards (จัดการระบบ)
+| ที่ | URL |
+|-----|-----|
+| Railway (Backend + DB) | `https://railway.app/dashboard` |
+| Vercel (Frontend) | `https://vercel.com/dashboard` |
+
+### Services (live)
 | Service | URL |
 |---------|-----|
 | Backend | `https://line-booking-production-a46f.up.railway.app` |
 | Frontend / LIFF | `https://line-booking-ochre.vercel.app` |
 | Admin | `https://line-booking-ochre.vercel.app/admin/index.html` |
 | Webhook | `https://line-booking-production-a46f.up.railway.app/webhook/diamond-massage` |
+| Health Check | `https://line-booking-production-a46f.up.railway.app/health` |
 
 - Railway: auto-deploy จาก GitHub `main`, Root Directory = `/backend`, port 8080
 - Vercel: auto-deploy จาก GitHub `main`, Root Directory = `/frontend`
@@ -246,3 +254,7 @@ VALUES ('happy-spa', 'Happy Spa', 'CHANNEL_ID', 'SECRET', 'TOKEN', 'LIFF_ID');
 - [ ] Staff / therapist assignment
 - [ ] Multiple branches per tenant
 - [ ] LINE Pay integration
+
+แก้ตรงใน DB (ผลทันที)
+เข้า Railway → PostgreSQL → Query แล้วรัน SQL เช่น เปลี่ยน max เป็น 3:
+UPDATE time_slots SET max_bookings = 3;
