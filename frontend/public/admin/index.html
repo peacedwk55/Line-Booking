@@ -242,6 +242,7 @@
   function logout() {
     localStorage.removeItem('admin_token')
     token = ''
+    document.getElementById('login-password').value = ''
     document.getElementById('login-overlay').style.display = 'flex'
   }
 
