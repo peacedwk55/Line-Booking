@@ -133,7 +133,7 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
         await line.SendTextAsync(
             tenantId,
             booking.User.LineUserId,
-            $"❌ ยกเลิกการจองแล้ว\n📅 {booking.BookingDate:dd MMM} ⏰ {booking.StartTime:hh\\:mm}\n" +
+            $"❌ ยกเลิกการจองแล้ว\n📅 {booking.BookingDate:dd MMM} ⏰ {booking.StartTime:HH\\:mm}\n" +
             (reason != null ? $"เหตุผล: {reason}" : "สอบถามเพิ่มเติมได้เลยค่ะ"));
 
         return true;
