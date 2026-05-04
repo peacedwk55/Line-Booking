@@ -159,28 +159,35 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
         var maxConcurrent = opSlot.MaxBookings;
         var results       = new List<SlotInfo>();
 
-        // Generate start times every 30 min; last start = EndTime - duration
+        // For today: only show slots starting at least 1 hour from now (Bangkok = UTC+7)
+        var todayBangkok = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var nowBangkok   = TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var minStart     = date == todayBangkok ? nowBangkok.AddMinutes(60) : TimeOnly.MinValue;
+
         var current     = opSlot.StartTime;
         var latestStart = opSlot.EndTime.AddMinutes(-durationMinutes);
 
         while (current <= latestStart)
         {
-            var end = current.AddMinutes(durationMinutes);
+            if (current >= minStart)
+            {
+                var end = current.AddMinutes(durationMinutes);
 
-            var overlaps = await db.Bookings
-                .CountAsync(b =>
-                    b.TenantId    == tenantId &&
-                    b.BookingDate == date &&
-                    b.Status      != BookingStatus.Cancelled &&
-                    b.StartTime   < end &&
-                    b.EndTime     > current);
+                var overlaps = await db.Bookings
+                    .CountAsync(b =>
+                        b.TenantId    == tenantId &&
+                        b.BookingDate == date &&
+                        b.Status      != BookingStatus.Cancelled &&
+                        b.StartTime   < end &&
+                        b.EndTime     > current);
 
-            results.Add(new SlotInfo(
-                current,
-                end,
-                maxConcurrent - overlaps,
-                overlaps < maxConcurrent
-            ));
+                results.Add(new SlotInfo(
+                    current,
+                    end,
+                    maxConcurrent - overlaps,
+                    overlaps < maxConcurrent
+                ));
+            }
 
             current = current.AddMinutes(durationMinutes);
         }

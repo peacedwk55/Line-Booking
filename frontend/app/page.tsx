@@ -32,7 +32,7 @@ export default function BookingPage() {
   const [bookingId,       setBookingId] = useState<string>('')
   const [apiError,        setApiError]  = useState<string>('')
 
-  const minDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
+  const minDate = format(new Date(), 'yyyy-MM-dd')
   const maxDate = format(addDays(new Date(), 60), 'yyyy-MM-dd')
 
   const totalPrice = selectedService
