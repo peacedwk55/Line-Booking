@@ -79,8 +79,9 @@ using (var scope = app.Services.CreateScope())
         Log.Information("Seeded tenant");
     }
 
-    // Re-seed services if missing or schema changed (PricePerHour)
-    if (!db.Services.Any(s => s.TenantId == tenantId && s.PricePerHour != null))
+    // Re-seed services if missing or still using old format (duration in name)
+    if (!db.Services.Any(s => s.TenantId == tenantId) ||
+         db.Services.Any(s => s.TenantId == tenantId && s.Name.Contains("นาที")))
     {
         db.Services.RemoveRange(db.Services.Where(s => s.TenantId == tenantId));
         db.Services.AddRange(
@@ -89,7 +90,7 @@ using (var scope = app.Services.CreateScope())
             new Service { TenantId = tenantId, Name = "นวดฝ่าเท้า",  Description = "กระตุ้นจุดสะท้อนสุขภาพ",        PricePerHour = 300, SortOrder = 3 }
         );
         await db.SaveChangesAsync();
-        Log.Information("Seeded services");
+        Log.Information("Reseeded services to new format (pricePerHour)");
     }
 
     // Re-seed time slots: 1 row/day (operating hours). Delete old format (>6 rows) if present.
