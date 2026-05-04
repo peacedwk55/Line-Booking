@@ -36,7 +36,7 @@ beforeEach(() => {
 describe('getServices', () => {
   it('returns service list on success', async () => {
     const mockServices = [
-      { id: 'svc-1', name: 'นวดแผนไทย 60 นาที', durationMinutes: 60, price: 350 },
+      { id: 'svc-1', name: 'นวดแผนไทย', pricePerHour: 350 },
     ]
     mockInstance.get.mockResolvedValueOnce({ data: mockServices })
 
@@ -62,9 +62,9 @@ describe('getSlots', () => {
     ]
     mockInstance.get.mockResolvedValueOnce({ data: mockSlots })
 
-    const result = await getSlots('2025-06-02')
+    const result = await getSlots('2025-06-02', 60)
 
-    expect(mockInstance.get).toHaveBeenCalledWith('/bookings/slots?date=2025-06-02')
+    expect(mockInstance.get).toHaveBeenCalledWith('/bookings/slots?date=2025-06-02&duration=60')
     expect(result).toHaveLength(2)
     expect(result[0].available).toBe(true)
     expect(result[1].available).toBe(false)
@@ -75,11 +75,12 @@ describe('getSlots', () => {
 
 describe('createBooking', () => {
   const payload = {
-    lineUserId: 'U123',
-    serviceId:  'svc-1',
-    date:       '2025-06-02',
-    startTime:  '10:00',
-    endTime:    '11:30',
+    lineUserId:      'U123',
+    serviceId:       'svc-1',
+    date:            '2025-06-02',
+    startTime:       '10:00',
+    endTime:         '11:00',
+    durationMinutes: 60,
   }
 
   it('posts payload and returns booking id', async () => {

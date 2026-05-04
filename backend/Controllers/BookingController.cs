@@ -13,9 +13,12 @@ namespace DiamondBooking.Controllers;
 [Route("api/{tenantSlug}/bookings")]
 public class BookingController(AppDbContext db, BookingService svc) : ControllerBase
 {
-    // GET /api/diamond-massage/bookings/slots?date=2025-02-01
+    // GET /api/diamond-massage/bookings/slots?date=2025-02-01&duration=60
     [HttpGet("slots")]
-    public async Task<IActionResult> GetSlots([FromRoute] string tenantSlug, [FromQuery] string date)
+    public async Task<IActionResult> GetSlots(
+        [FromRoute] string tenantSlug,
+        [FromQuery] string date,
+        [FromQuery] int    duration = 60)
     {
         var tenant = await ResolveTenant(tenantSlug);
         if (tenant == null) return NotFound("Tenant not found");
@@ -23,7 +26,10 @@ public class BookingController(AppDbContext db, BookingService svc) : Controller
         if (!DateOnly.TryParse(date, out var parsedDate))
             return BadRequest("Invalid date format. Use YYYY-MM-DD");
 
-        var slots = await svc.GetAvailableSlotsAsync(tenant.Id, parsedDate);
+        if (duration is not (60 or 90 or 120))
+            return BadRequest("duration must be 60, 90, or 120");
+
+        var slots = await svc.GetAvailableSlotsAsync(tenant.Id, parsedDate, duration);
         return Ok(slots.Select(s => new
         {
             start     = s.Start.ToString("HH:mm"),
@@ -58,6 +64,7 @@ public class BookingController(AppDbContext db, BookingService svc) : Controller
             DateOnly.Parse(dto.Date),
             TimeOnly.Parse(dto.StartTime),
             TimeOnly.Parse(dto.EndTime),
+            dto.DurationMinutes,
             dto.Note
         );
 
@@ -147,5 +154,6 @@ public record CreateBookingDto(
     string  Date,
     string  StartTime,
     string  EndTime,
+    int     DurationMinutes,
     string? Note
 );

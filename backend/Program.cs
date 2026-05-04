@@ -65,7 +65,7 @@ using (var scope = app.Services.CreateScope())
     else
         await db.Database.EnsureCreatedAsync();  // InMemory: just create schema
 
-    // Seed default tenant + data if not exists
+    // Seed default tenant + data
     var tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     if (!db.Tenants.Any(t => t.Id == tenantId))
     {
@@ -75,18 +75,37 @@ using (var scope = app.Services.CreateScope())
             LineChannelId = "placeholder", LineChannelSecret = "placeholder",
             LineAccessToken = "placeholder", Timezone = "Asia/Bangkok"
         });
-        db.Services.AddRange(
-            new Service { TenantId = tenantId, Name = "นวดแผนไทย 60 นาที",  Description = "ผ่อนคลายกล้ามเนื้อแบบดั้งเดิม", DurationMinutes = 60,  Price = 350, SortOrder = 1 },
-            new Service { TenantId = tenantId, Name = "นวดแผนไทย 90 นาที",  Description = "ผ่อนคลายแบบเต็มรูปแบบ",         DurationMinutes = 90,  Price = 500, SortOrder = 2 },
-            new Service { TenantId = tenantId, Name = "นวดน้ำมัน 60 นาที",   Description = "อโรมาเธอราพีช่วยผ่อนคลาย",      DurationMinutes = 60,  Price = 450, SortOrder = 3 },
-            new Service { TenantId = tenantId, Name = "นวดฝ่าเท้า 45 นาที",  Description = "กระตุ้นจุดสะท้อนสุขภาพ",        DurationMinutes = 45,  Price = 280, SortOrder = 4 }
-        );
-        var times = new[] { ("10:00","11:30"),("11:30","13:00"),("13:00","14:30"),("14:30","16:00"),("16:00","17:30"),("17:30","19:00"),("19:00","20:30") };
-        foreach (var dow in new[] { 1,2,3,4,5,6 })
-            foreach (var (s, e) in times)
-                db.TimeSlots.Add(new TimeSlot { TenantId = tenantId, DayOfWeek = dow, StartTime = TimeOnly.Parse(s), EndTime = TimeOnly.Parse(e), MaxBookings = 2 });
         await db.SaveChangesAsync();
-        Log.Information("Seeded default tenant and data");
+        Log.Information("Seeded tenant");
+    }
+
+    // Re-seed services if missing or schema changed (PricePerHour)
+    if (!db.Services.Any(s => s.TenantId == tenantId && s.PricePerHour != null))
+    {
+        db.Services.RemoveRange(db.Services.Where(s => s.TenantId == tenantId));
+        db.Services.AddRange(
+            new Service { TenantId = tenantId, Name = "นวดแผนไทย",  Description = "ผ่อนคลายกล้ามเนื้อแบบดั้งเดิม", PricePerHour = 350, SortOrder = 1 },
+            new Service { TenantId = tenantId, Name = "นวดน้ำมัน",   Description = "อโรมาเธอราพีช่วยผ่อนคลาย",      PricePerHour = 450, SortOrder = 2 },
+            new Service { TenantId = tenantId, Name = "นวดฝ่าเท้า",  Description = "กระตุ้นจุดสะท้อนสุขภาพ",        PricePerHour = 300, SortOrder = 3 }
+        );
+        await db.SaveChangesAsync();
+        Log.Information("Seeded services");
+    }
+
+    // Re-seed time slots if missing (1 row per day = operating hours)
+    if (!db.TimeSlots.Any(s => s.TenantId == tenantId))
+    {
+        foreach (var dow in new[] { 1,2,3,4,5,6 })
+            db.TimeSlots.Add(new TimeSlot
+            {
+                TenantId   = tenantId,
+                DayOfWeek  = dow,
+                StartTime  = TimeOnly.Parse("10:00"),
+                EndTime    = TimeOnly.Parse("20:30"),
+                MaxBookings = 2
+            });
+        await db.SaveChangesAsync();
+        Log.Information("Seeded time slots");
     }
 }
 

@@ -9,7 +9,13 @@ import {
 import { format, addDays } from 'date-fns'
 import { th } from 'date-fns/locale'
 
-type Step = 'service' | 'date' | 'time' | 'confirm' | 'done'
+type Step = 'service' | 'duration' | 'date' | 'time' | 'confirm' | 'done'
+
+const DURATIONS = [
+  { minutes: 60,  label: '1 ชั่วโมง' },
+  { minutes: 90,  label: '1.5 ชั่วโมง' },
+  { minutes: 120, label: '2 ชั่วโมง' },
+]
 
 export default function BookingPage() {
   const { profile, ready, error } = useLiff()
@@ -17,6 +23,7 @@ export default function BookingPage() {
   const [step,            setStep]     = useState<Step>('service')
   const [services,        setServices] = useState<Service[]>([])
   const [selectedService, setService]  = useState<Service | null>(null)
+  const [selectedDuration, setDuration] = useState<number>(60)
   const [selectedDate,    setDate]     = useState<string>('')
   const [slots,           setSlots]    = useState<Slot[]>([])
   const [selectedSlot,    setSlot]     = useState<Slot | null>(null)
@@ -25,11 +32,12 @@ export default function BookingPage() {
   const [bookingId,       setBookingId] = useState<string>('')
   const [apiError,        setApiError]  = useState<string>('')
 
-  // Generate next 60 days (excluding Sunday = 0)
-  const availableDates = Array.from({ length: 60 }, (_, i) => addDays(new Date(), i + 1))
-    .filter(d => d.getDay() !== 0)
   const minDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
   const maxDate = format(addDays(new Date(), 60), 'yyyy-MM-dd')
+
+  const totalPrice = selectedService
+    ? Math.round(selectedService.pricePerHour * selectedDuration / 60)
+    : 0
 
   useEffect(() => {
     if (ready) getServices().then(setServices).catch(e => setApiError(e?.message ?? 'API error'))
@@ -37,25 +45,28 @@ export default function BookingPage() {
 
   useEffect(() => {
     if (selectedDate) {
+      setSlot(null)
       setLoading(true)
-      getSlots(selectedDate)
+      getSlots(selectedDate, selectedDuration)
         .then(setSlots)
+        .catch(() => setSlots([]))
         .finally(() => setLoading(false))
     }
-  }, [selectedDate])
+  }, [selectedDate, selectedDuration])
 
   const handleConfirm = async () => {
     if (!profile || !selectedService || !selectedSlot) return
     setLoading(true)
     try {
       const result = await createBooking({
-        lineUserId:  profile.userId,
-        displayName: profile.displayName,
-        pictureUrl:  profile.pictureUrl,
-        serviceId:   selectedService.id,
-        date:        selectedDate,
-        startTime:   selectedSlot.start,
-        endTime:     selectedSlot.end,
+        lineUserId:      profile.userId,
+        displayName:     profile.displayName,
+        pictureUrl:      profile.pictureUrl,
+        serviceId:       selectedService.id,
+        date:            selectedDate,
+        startTime:       selectedSlot.start,
+        endTime:         selectedSlot.end,
+        durationMinutes: selectedDuration,
         note
       })
       setBookingId(result.bookingId)
@@ -90,6 +101,8 @@ export default function BookingPage() {
     )
   }
 
+  const STEPS: Step[] = ['service', 'duration', 'date', 'time', 'confirm']
+
   return (
     <div className="min-h-screen bg-amber-50">
       {/* Header */}
@@ -107,10 +120,9 @@ export default function BookingPage() {
         {/* Step indicator */}
         {step !== 'done' && (
           <div className="flex gap-1.5 mt-4">
-            {(['service','date','time','confirm'] as Step[]).map((s, i) => (
+            {STEPS.map((s, i) => (
               <div key={s} className={`h-1.5 flex-1 rounded-full transition-all ${
-                ['service','date','time','confirm'].indexOf(step) >= i
-                  ? 'bg-white' : 'bg-white/30'
+                STEPS.indexOf(step) >= i ? 'bg-white' : 'bg-white/30'
               }`}/>
             ))}
           </div>
@@ -128,18 +140,17 @@ export default function BookingPage() {
               {services.map(svc => (
                 <button
                   key={svc.id}
-                  onClick={() => { setService(svc); setStep('date') }}
+                  onClick={() => { setService(svc); setStep('duration') }}
                   className="w-full bg-white rounded-2xl p-4 text-left shadow-sm border border-amber-100 hover:border-amber-400 hover:shadow-md active:scale-[0.98] transition-all"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="font-semibold text-gray-800">{svc.name}</p>
                       <p className="text-sm text-gray-500 mt-0.5">{svc.description}</p>
-                      <p className="text-xs text-amber-600 mt-1">⏱ {svc.durationMinutes} นาที</p>
                     </div>
-                    <div className="ml-3 text-right">
-                      <span className="text-amber-600 font-bold">{svc.price?.toLocaleString()}</span>
-                      <span className="text-gray-400 text-xs"> ฿</span>
+                    <div className="ml-3 text-right shrink-0">
+                      <span className="text-amber-600 font-bold">{svc.pricePerHour?.toLocaleString()}</span>
+                      <span className="text-gray-400 text-xs"> ฿/ชม</span>
                     </div>
                   </div>
                 </button>
@@ -148,14 +159,46 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ── STEP 2: Select Date ── */}
-        {step === 'date' && (
+        {/* ── STEP 2: Select Duration ── */}
+        {step === 'duration' && (
           <div>
             <button onClick={() => setStep('service')} className="text-amber-600 text-sm mb-4 flex items-center gap-1">
               ← กลับ
             </button>
+            <h2 className="font-bold text-gray-800 text-lg mb-1">เลือกระยะเวลา</h2>
+            <p className="text-sm text-gray-500 mb-4">{selectedService?.name}</p>
+            <div className="space-y-3">
+              {DURATIONS.map(d => {
+                const price = Math.round(selectedService!.pricePerHour * d.minutes / 60)
+                return (
+                  <button
+                    key={d.minutes}
+                    onClick={() => { setDuration(d.minutes); setStep('date') }}
+                    className={`w-full rounded-2xl p-4 text-left transition-all border ${
+                      selectedDuration === d.minutes
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-md'
+                        : 'bg-white border-amber-100 hover:border-amber-400 text-gray-700 active:scale-[0.98]'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold">{d.label}</span>
+                      <span className="font-bold">{price.toLocaleString()} ฿</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: Select Date ── */}
+        {step === 'date' && (
+          <div>
+            <button onClick={() => setStep('duration')} className="text-amber-600 text-sm mb-4 flex items-center gap-1">
+              ← กลับ
+            </button>
             <h2 className="font-bold text-gray-800 text-lg mb-1">เลือกวันที่</h2>
-            <p className="text-sm text-gray-500 mb-3">{selectedService?.name}</p>
+            <p className="text-sm text-gray-500 mb-1">{selectedService?.name} · {DURATIONS.find(d => d.minutes === selectedDuration)?.label}</p>
             <p className="text-xs text-gray-400 mb-3">เปิดให้จองวันจันทร์ – เสาร์</p>
             <input
               type="date"
@@ -178,15 +221,16 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ── STEP 3: Select Time ── */}
+        {/* ── STEP 4: Select Time ── */}
         {step === 'time' && (
           <div>
             <button onClick={() => setStep('date')} className="text-amber-600 text-sm mb-4 flex items-center gap-1">
               ← กลับ
             </button>
-            <h2 className="font-bold text-gray-800 text-lg mb-1">เลือกเวลา</h2>
+            <h2 className="font-bold text-gray-800 text-lg mb-1">เลือกเวลาเริ่ม</h2>
             <p className="text-sm text-gray-500 mb-4">
               {selectedDate && format(new Date(selectedDate), 'EEEE d MMMM yyyy', { locale: th })}
+              {' · '}{DURATIONS.find(d => d.minutes === selectedDuration)?.label}
             </p>
             {loading ? (
               <div className="text-center py-8 text-amber-600">กำลังโหลดช่วงเวลา...</div>
@@ -205,7 +249,7 @@ export default function BookingPage() {
                           : 'bg-white border border-amber-100 hover:border-amber-400 text-gray-700 active:scale-[0.97]'
                     }`}
                   >
-                    <p className="font-bold">{slot.start} – {slot.end}</p>
+                    <p className="font-bold">{slot.start}</p>
                     <p className="text-xs mt-0.5 opacity-70">
                       {slot.available ? `ว่าง ${slot.remaining} คิว` : 'เต็ม'}
                     </p>
@@ -216,7 +260,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ── STEP 4: Confirm ── */}
+        {/* ── STEP 5: Confirm ── */}
         {step === 'confirm' && (
           <div>
             <button onClick={() => setStep('time')} className="text-amber-600 text-sm mb-4 flex items-center gap-1">
@@ -230,10 +274,11 @@ export default function BookingPage() {
               </div>
               <div className="p-4 space-y-3">
                 {[
-                  ['💆 บริการ',    selectedService?.name],
-                  ['📅 วันที่',    selectedDate && format(new Date(selectedDate), 'd MMMM yyyy', { locale: th })],
-                  ['⏰ เวลา',      `${selectedSlot?.start} – ${selectedSlot?.end} น.`],
-                  ['💰 ราคา',     `${selectedService?.price?.toLocaleString()} ฿`],
+                  ['💆 บริการ',     selectedService?.name],
+                  ['⏱ ระยะเวลา',  DURATIONS.find(d => d.minutes === selectedDuration)?.label],
+                  ['📅 วันที่',     selectedDate && format(new Date(selectedDate), 'd MMMM yyyy', { locale: th })],
+                  ['⏰ เวลา',       `${selectedSlot?.start} – ${selectedSlot?.end} น.`],
+                  ['💰 ราคา',      `${totalPrice.toLocaleString()} ฿`],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between text-sm">
                     <span className="text-gray-500">{label}</span>
@@ -264,7 +309,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ── STEP 5: Done ── */}
+        {/* ── STEP 6: Done ── */}
         {step === 'done' && (
           <div className="text-center py-8">
             <div className="text-6xl mb-4">🎉</div>
@@ -275,13 +320,15 @@ export default function BookingPage() {
             <div className="bg-amber-50 rounded-2xl p-4 text-left mb-6 border border-amber-100">
               <p className="text-sm text-gray-600">📅 {selectedDate && format(new Date(selectedDate), 'd MMMM yyyy', { locale: th })}</p>
               <p className="text-sm text-gray-600">⏰ {selectedSlot?.start} – {selectedSlot?.end} น.</p>
-              <p className="text-sm text-gray-600">💆 {selectedService?.name}</p>
+              <p className="text-sm text-gray-600">💆 {selectedService?.name} · {DURATIONS.find(d => d.minutes === selectedDuration)?.label}</p>
+              <p className="text-sm font-semibold text-amber-700">💰 {totalPrice.toLocaleString()} ฿</p>
               <p className="text-xs text-gray-400 mt-2">ID: {bookingId.slice(0, 8)}</p>
             </div>
 
             <button
               onClick={() => {
-                setStep('service'); setService(null); setDate(''); setSlot(null); setNote(''); setBookingId('')
+                setStep('service'); setService(null); setDuration(60)
+                setDate(''); setSlot(null); setNote(''); setBookingId('')
               }}
               className="w-full border border-amber-400 text-amber-600 font-semibold py-3.5 rounded-2xl hover:bg-amber-50 transition-all"
             >

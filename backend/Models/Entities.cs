@@ -46,8 +46,7 @@ public class Service
     public Guid TenantId { get; set; }
     [MaxLength(255)] public string Name { get; set; } = "";
     public string? Description { get; set; }
-    public int DurationMinutes { get; set; } = 60;
-    [Column(TypeName = "decimal(10,2)")] public decimal? Price { get; set; }
+    [Column(TypeName = "decimal(10,2)")] public decimal? PricePerHour { get; set; }
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -80,6 +79,7 @@ public class Booking
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
     public TimeOnly EndTime { get; set; }
+    public int DurationMinutes { get; set; } = 60;
     public BookingStatus Status { get; set; } = BookingStatus.Confirmed;
     public string? Note { get; set; }
     public string? AdminNote { get; set; }

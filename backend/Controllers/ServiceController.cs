@@ -27,8 +27,7 @@ public class ServiceController(AppDbContext db) : ControllerBase
                 s.Id,
                 s.Name,
                 s.Description,
-                s.DurationMinutes,
-                s.Price
+                s.PricePerHour
             })
             .ToListAsync();
 

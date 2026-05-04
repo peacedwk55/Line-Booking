@@ -24,8 +24,8 @@ const mockProfile = {
 }
 
 const mockServices: api.Service[] = [
-  { id: 'svc-1', name: 'นวดแผนไทย 60 นาที', description: 'ผ่อนคลาย', durationMinutes: 60, price: 350 },
-  { id: 'svc-2', name: 'นวดน้ำมัน 60 นาที', description: 'อโรมา', durationMinutes: 60, price: 450 },
+  { id: 'svc-1', name: 'นวดแผนไทย', description: 'ผ่อนคลาย', pricePerHour: 350 },
+  { id: 'svc-2', name: 'นวดน้ำมัน',  description: 'อโรมา',    pricePerHour: 450 },
 ]
 
 const mockSlots: api.Slot[] = [
@@ -78,47 +78,53 @@ describe('BookingPage', () => {
   it('renders service list after load', async () => {
     render(<BookingPage />)
     await waitFor(() => {
-      expect(screen.getByText('นวดแผนไทย 60 นาที')).toBeInTheDocument()
-      expect(screen.getByText('นวดน้ำมัน 60 นาที')).toBeInTheDocument()
+      expect(screen.getByText('นวดแผนไทย')).toBeInTheDocument()
+      expect(screen.getByText('นวดน้ำมัน')).toBeInTheDocument()
     })
   })
 
-  it('moves to date step after selecting service', async () => {
+  it('moves to duration step after selecting service', async () => {
     render(<BookingPage />)
-    await waitFor(() => screen.getByText('นวดแผนไทย 60 นาที'))
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
+    expect(screen.getByText('เลือกระยะเวลา')).toBeInTheDocument()
+    expect(screen.getByText('1 ชั่วโมง')).toBeInTheDocument()
+    expect(screen.getByText('1.5 ชั่วโมง')).toBeInTheDocument()
+    expect(screen.getByText('2 ชั่วโมง')).toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByText('นวดแผนไทย 60 นาที'))
-
+  it('moves to date step after selecting duration', async () => {
+    render(<BookingPage />)
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('1 ชั่วโมง'))
     expect(screen.getByText('เลือกวันที่')).toBeInTheDocument()
-    expect(screen.getByText('นวดแผนไทย 60 นาที', { selector: 'p' })).toBeInTheDocument()
   })
 
   it('loads time slots after selecting date', async () => {
     render(<BookingPage />)
-    await waitFor(() => screen.getByText('นวดแผนไทย 60 นาที'))
-    fireEvent.click(screen.getByText('นวดแผนไทย 60 นาที'))
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('1 ชั่วโมง'))
 
-    // Click first available date
-    const dateButtons = screen.getAllByRole('button').filter(b =>
-      b.closest('.grid') && b.textContent?.match(/\d+/)
-    )
-    fireEvent.click(dateButtons[0])
+    const dateInput = screen.getByDisplayValue('')
+    fireEvent.change(dateInput, { target: { value: '2025-06-02' } })
+    fireEvent.click(screen.getByText('ถัดไป →'))
 
     await waitFor(() => {
-      expect(screen.getByText(/10:00 – 11:30/)).toBeInTheDocument()
-      expect(screen.getByText(/14:00 – 15:30/)).toBeInTheDocument()
+      expect(screen.getByText('10:00')).toBeInTheDocument()
     })
   })
 
   it('disabled button shown for full slot', async () => {
     render(<BookingPage />)
-    await waitFor(() => screen.getByText('นวดแผนไทย 60 นาที'))
-    fireEvent.click(screen.getByText('นวดแผนไทย 60 นาที'))
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('1 ชั่วโมง'))
 
-    const dateButtons = screen.getAllByRole('button').filter(b =>
-      b.textContent?.match(/^\D*\d{1,2}\D*$/)
-    )
-    fireEvent.click(dateButtons[0])
+    const dateInput = screen.getByDisplayValue('')
+    fireEvent.change(dateInput, { target: { value: '2025-06-02' } })
+    fireEvent.click(screen.getByText('ถัดไป →'))
 
     await waitFor(() => screen.getByText('เต็ม'))
     const fullSlot = screen.getByText('เต็ม').closest('button')
@@ -129,31 +135,34 @@ describe('BookingPage', () => {
     render(<BookingPage />)
 
     // Step 1: service
-    await waitFor(() => screen.getByText('นวดแผนไทย 60 นาที'))
-    fireEvent.click(screen.getByText('นวดแผนไทย 60 นาที'))
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
 
-    // Step 2: date
-    const dateButtons = screen.getAllByRole('button').filter(b =>
-      b.textContent?.match(/\d+/) && !b.textContent?.includes('←')
-    )
-    fireEvent.click(dateButtons[0])
+    // Step 2: duration
+    fireEvent.click(screen.getByText('1 ชั่วโมง'))
 
-    // Step 3: time
-    await waitFor(() => screen.getByText(/10:00 – 11:30/))
-    fireEvent.click(screen.getByText(/10:00 – 11:30/).closest('button')!)
+    // Step 3: date
+    const dateInput = screen.getByDisplayValue('')
+    fireEvent.change(dateInput, { target: { value: '2025-06-02' } })
+    fireEvent.click(screen.getByText('ถัดไป →'))
 
-    // Step 4: confirm
+    // Step 4: time
+    await waitFor(() => screen.getByText('10:00'))
+    fireEvent.click(screen.getByText('10:00').closest('button')!)
+
+    // Step 5: confirm
     expect(screen.getByText('ยืนยันการจอง')).toBeInTheDocument()
     fireEvent.click(screen.getByText('✅ ยืนยันการจอง'))
 
-    // Step 5: done
+    // Step 6: done
     await waitFor(() => {
       expect(screen.getByText('จองสำเร็จ!')).toBeInTheDocument()
     })
     expect(api.createBooking).toHaveBeenCalledWith(expect.objectContaining({
-      lineUserId: 'U_TEST_123',
-      serviceId:  'svc-1',
-      startTime:  '10:00',
+      lineUserId:      'U_TEST_123',
+      serviceId:       'svc-1',
+      startTime:       '10:00',
+      durationMinutes: 60,
     }))
   })
 
@@ -164,14 +173,16 @@ describe('BookingPage', () => {
     const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {})
 
     render(<BookingPage />)
-    await waitFor(() => screen.getByText('นวดแผนไทย 60 นาที'))
-    fireEvent.click(screen.getByText('นวดแผนไทย 60 นาที'))
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('1 ชั่วโมง'))
 
-    const dateButtons = screen.getAllByRole('button').filter(b => b.textContent?.match(/\d+/))
-    fireEvent.click(dateButtons[0])
+    const dateInput = screen.getByDisplayValue('')
+    fireEvent.change(dateInput, { target: { value: '2025-06-02' } })
+    fireEvent.click(screen.getByText('ถัดไป →'))
 
-    await waitFor(() => screen.getByText(/10:00 – 11:30/))
-    fireEvent.click(screen.getByText(/10:00 – 11:30/).closest('button')!)
+    await waitFor(() => screen.getByText('10:00'))
+    fireEvent.click(screen.getByText('10:00').closest('button')!)
     fireEvent.click(screen.getByText('✅ ยืนยันการจอง'))
 
     await waitFor(() => {
@@ -180,12 +191,11 @@ describe('BookingPage', () => {
     alertMock.mockRestore()
   })
 
-  it('back button returns to previous step', async () => {
+  it('back button from duration returns to service step', async () => {
     render(<BookingPage />)
-    await waitFor(() => screen.getByText('นวดแผนไทย 60 นาที'))
-    fireEvent.click(screen.getByText('นวดแผนไทย 60 นาที'))
-
-    expect(screen.getByText('เลือกวันที่')).toBeInTheDocument()
+    await waitFor(() => screen.getByText('นวดแผนไทย'))
+    fireEvent.click(screen.getByText('นวดแผนไทย'))
+    expect(screen.getByText('เลือกระยะเวลา')).toBeInTheDocument()
     fireEvent.click(screen.getByText(/← กลับ/))
     expect(screen.getByText('เลือกบริการ')).toBeInTheDocument()
   })

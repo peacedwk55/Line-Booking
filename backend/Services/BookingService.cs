@@ -13,6 +13,7 @@ public record CreateBookingRequest(
     DateOnly  BookingDate,
     TimeOnly  StartTime,
     TimeOnly  EndTime,
+    int       DurationMinutes,
     string?   Note
 );
 
@@ -43,27 +44,25 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
         if (service == null)
             return new(false, "ไม่พบบริการที่เลือก", null);
 
-        // 3. Check slot capacity (count active bookings overlapping this time)
+        // 3. Get max concurrent capacity for this day
+        var dayOfWeek = (int)req.BookingDate.DayOfWeek;
+        var opSlot = await db.TimeSlots
+            .Where(s =>
+                s.TenantId == tenantId &&
+                s.IsActive &&
+                (s.DayOfWeek == dayOfWeek || s.SpecificDate == req.BookingDate))
+            .FirstOrDefaultAsync();
+
+        var maxBookings = opSlot?.MaxBookings ?? 1;
+
+        // Count bookings that overlap with requested time range
         var overlaps = await db.Bookings
-            .Where(b =>
+            .CountAsync(b =>
                 b.TenantId    == tenantId &&
                 b.BookingDate == req.BookingDate &&
                 b.Status      != BookingStatus.Cancelled &&
                 b.StartTime   < req.EndTime &&
-                b.EndTime     > req.StartTime)
-            .CountAsync();
-
-        // Get max_bookings for this slot
-        var dayOfWeek = (int)req.BookingDate.DayOfWeek;
-        var slot = await db.TimeSlots
-            .Where(s =>
-                s.TenantId  == tenantId &&
-                s.IsActive &&
-                (s.DayOfWeek == dayOfWeek || s.SpecificDate == req.BookingDate) &&
-                s.StartTime  == req.StartTime)
-            .FirstOrDefaultAsync();
-
-        var maxBookings = slot?.MaxBookings ?? 1;
+                b.EndTime     > req.StartTime);
 
         if (overlaps >= maxBookings)
             return new(false, "ช่วงเวลานี้เต็มแล้ว กรุณาเลือกเวลาอื่น", null);
@@ -84,14 +83,15 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
         // 5. Create booking
         var booking = new Booking
         {
-            TenantId    = tenantId,
-            UserId      = user.Id,
-            ServiceId   = service.Id,
-            BookingDate = req.BookingDate,
-            StartTime   = req.StartTime,
-            EndTime     = req.EndTime,
-            Status      = BookingStatus.Confirmed,
-            Note        = req.Note
+            TenantId        = tenantId,
+            UserId          = user.Id,
+            ServiceId       = service.Id,
+            BookingDate     = req.BookingDate,
+            StartTime       = req.StartTime,
+            EndTime         = req.EndTime,
+            DurationMinutes = req.DurationMinutes,
+            Status          = BookingStatus.Confirmed,
+            Note            = req.Note
         };
 
         db.Bookings.Add(booking);
@@ -140,37 +140,51 @@ public class BookingService(AppDbContext db, ILineService line, ILogger<BookingS
     }
 
     // ------------------------------------------------------------
-    // Get available time slots for a given date
+    // Get available start times for a given date + duration
     // ------------------------------------------------------------
-    public async Task<List<SlotInfo>> GetAvailableSlotsAsync(Guid tenantId, DateOnly date)
+    public async Task<List<SlotInfo>> GetAvailableSlotsAsync(Guid tenantId, DateOnly date, int durationMinutes)
     {
         var dayOfWeek = (int)date.DayOfWeek;
 
-        var slots = await db.TimeSlots
+        // Get operating hours for this day (1 row per day)
+        var opSlot = await db.TimeSlots
             .Where(s =>
                 s.TenantId == tenantId &&
                 s.IsActive &&
                 (s.DayOfWeek == dayOfWeek || s.SpecificDate == date))
-            .OrderBy(s => s.StartTime)
-            .ToListAsync();
+            .FirstOrDefaultAsync();
 
-        var results = new List<SlotInfo>();
-        foreach (var slot in slots)
+        if (opSlot == null) return [];
+
+        var maxConcurrent = opSlot.MaxBookings;
+        var results       = new List<SlotInfo>();
+
+        // Generate start times every 30 min; last start = EndTime - duration
+        var current     = opSlot.StartTime;
+        var latestStart = opSlot.EndTime.AddMinutes(-durationMinutes);
+
+        while (current <= latestStart)
         {
-            var booked = await db.Bookings
+            var end = current.AddMinutes(durationMinutes);
+
+            var overlaps = await db.Bookings
                 .CountAsync(b =>
                     b.TenantId    == tenantId &&
                     b.BookingDate == date &&
                     b.Status      != BookingStatus.Cancelled &&
-                    b.StartTime   == slot.StartTime);
+                    b.StartTime   < end &&
+                    b.EndTime     > current);
 
             results.Add(new SlotInfo(
-                slot.StartTime,
-                slot.EndTime,
-                slot.MaxBookings - booked,
-                booked < slot.MaxBookings
+                current,
+                end,
+                maxConcurrent - overlaps,
+                overlaps < maxConcurrent
             ));
+
+            current = current.AddMinutes(30);
         }
+
         return results;
     }
 }

@@ -13,8 +13,8 @@ export async function getServices() {
 }
 
 // ── Slots ─────────────────────────────────────────────────────────
-export async function getSlots(date: string) {
-  const { data } = await api.get(`/bookings/slots?date=${date}`)
+export async function getSlots(date: string, duration: number) {
+  const { data } = await api.get(`/bookings/slots?date=${date}&duration=${duration}`)
   return data as Slot[]
 }
 
@@ -36,11 +36,10 @@ export async function cancelBooking(id: string, lineUserId: string) {
 
 // ── Types ─────────────────────────────────────────────────────────
 export interface Service {
-  id:              string
-  name:            string
-  description:     string
-  durationMinutes: number
-  price:           number
+  id:           string
+  name:         string
+  description:  string
+  pricePerHour: number
 }
 
 export interface Slot {
@@ -51,14 +50,15 @@ export interface Slot {
 }
 
 export interface CreateBookingPayload {
-  lineUserId:   string
-  displayName?: string
-  pictureUrl?:  string
-  serviceId:    string
-  date:         string
-  startTime:    string
-  endTime:      string
-  note?:        string
+  lineUserId:      string
+  displayName?:    string
+  pictureUrl?:     string
+  serviceId:       string
+  date:            string
+  startTime:       string
+  endTime:         string
+  durationMinutes: number
+  note?:           string
 }
 
 export interface Booking {
