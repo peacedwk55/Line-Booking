@@ -92,20 +92,22 @@ using (var scope = app.Services.CreateScope())
         Log.Information("Seeded services");
     }
 
-    // Re-seed time slots if missing (1 row per day = operating hours)
-    if (!db.TimeSlots.Any(s => s.TenantId == tenantId))
+    // Re-seed time slots: 1 row/day (operating hours). Delete old format (>6 rows) if present.
+    var slotCount = db.TimeSlots.Count(s => s.TenantId == tenantId);
+    if (slotCount == 0 || slotCount > 6)
     {
+        db.TimeSlots.RemoveRange(db.TimeSlots.Where(s => s.TenantId == tenantId));
         foreach (var dow in new[] { 1,2,3,4,5,6 })
             db.TimeSlots.Add(new TimeSlot
             {
-                TenantId   = tenantId,
-                DayOfWeek  = dow,
-                StartTime  = TimeOnly.Parse("10:00"),
-                EndTime    = TimeOnly.Parse("20:30"),
+                TenantId    = tenantId,
+                DayOfWeek   = dow,
+                StartTime   = TimeOnly.Parse("10:00"),
+                EndTime     = TimeOnly.Parse("20:30"),
                 MaxBookings = 2
             });
         await db.SaveChangesAsync();
-        Log.Information("Seeded time slots");
+        Log.Information("Reseeded time slots to new format (1 row/day)");
     }
 }
 
